@@ -1,0 +1,180 @@
+/* Profile Page Styles */
+.avatar-lg {
+    width: 120px;
+    height: 120px;
+}
+
+.avatar-xl {
+    width: 150px;
+    height: 150px;
+}
+
+.profile-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px;
+    padding: 30px;
+    margin-bottom: 30px;
+}
+
+.profile-card .avatar {
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    transition: all 0.3s ease;
+}
+
+.profile-card .avatar:hover {
+    border-color: rgba(255, 255, 255, 0.8);
+    transform: scale(1.05);
+}
+
+.nav-tabs-custom .nav-link {
+    border: none;
+    border-radius: 10px 10px 0 0;
+    margin-right: 5px;
+    padding: 15px 25px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    background-color: #f8f9fa;
+    color: #6c757d;
+}
+
+.nav-tabs-custom .nav-link:hover {
+    background-color: #e9ecef;
+    color: #495057;
+}
+
+.nav-tabs-custom .nav-link.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+}
+
+.tab-content {
+    background: white;
+    border-radius: 0 15px 15px 15px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+}
+
+.form-control {
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+    padding: 12px 15px;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+.form-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 8px;
+}
+
+.btn {
+    border-radius: 10px;
+    padding: 12px 25px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    border: none;
+    color: white;
+}
+
+.btn-warning:hover {
+    box-shadow: 0 5px 15px rgba(243, 156, 18, 0.4);
+}
+
+.table th {
+    background-color: #f8f9fa;
+    border: none;
+    font-weight: 600;
+    color: #495057;
+}
+
+.table td {
+    border: none;
+    border-bottom: 1px solid #e9ecef;
+    vertical-align: middle;
+}
+
+.badge {
+    border-radius: 20px;
+    padding: 8px 15px;
+    font-weight: 500;
+}
+
+/* Avatar Upload Modal */
+.modal-content {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px 15px 0 0;
+    border: none;
+}
+
+.modal-header .btn-close {
+    filter: invert(1);
+}
+
+/* Password Toggle */
+.input-group .btn {
+    border-radius: 0 10px 10px 0;
+    border-left: none;
+}
+
+.input-group .form-control {
+    border-radius: 10px 0 0 10px;
+}
+
+/* Activity Log */
+.activity-item {
+    padding: 15px;
+    border-left: 3px solid #667eea;
+    background-color: #f8f9fa;
+    border-radius: 0 10px 10px 0;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+}
+
+.activity-item:hover {
+    background-color: #e9ecef;
+    transform: translateX(5px);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .avatar-lg {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .avatar-xl {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .nav-tabs-custom .nav-link {
+        padding: 10px 15px;
+        font-size: 14px;
+    }
+    
+    .tab-content {
+        padding: 20px;
+    }
+}

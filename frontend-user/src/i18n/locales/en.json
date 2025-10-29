@@ -1,0 +1,225 @@
+{
+  "app": {
+    "name": "Marketa",
+    "tagline": "AI-Powered Marketing Platform"
+  },
+  "nav": {
+    "home": "Home",
+    "about": "About",
+    "pricing": "Pricing",
+    "faq": "FAQ",
+    "login": "Login",
+    "register": "Sign Up",
+    "start_free": "Start Free"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Create Account",
+    "email": "Email Address",
+    "password": "Password",
+    "confirm_password": "Confirm Password",
+    "name": "Full Name",
+    "remember_me": "Remember Me",
+    "forgot_password": "Forgot Password?",
+    "reset_password": "Reset Password",
+    "verify_email": "Verify Email",
+    "continue_with_google": "Continue with Google",
+    "already_have_account": "Already have an account?",
+    "dont_have_account": "Don't have an account?",
+    "terms_agree": "I agree to the Terms and Conditions",
+    "send_reset_link": "Send Reset Link",
+    "back_to_login": "Back to Login",
+    "email_verification_sent": "Verification link has been sent to your email"
+  },
+  "landing": {
+    "hero": {
+      "title": "Smart Marketing Platform for Arab Businesses",
+      "subtitle": "Create complete marketing campaigns with AI in minutes",
+      "cta_primary": "Start Free",
+      "cta_secondary": "See How It Works"
+    },
+    "features": {
+      "title": "Everything You Need for Successful Marketing",
+      "subtitle": "Powerful tools, simple to use"
+    },
+    "testimonials": {
+      "title": "What Our Customers Say",
+      "subtitle": "Real feedback from real users"
+    },
+    "pricing": {
+      "title": "Pricing Plans for Everyone",
+      "subtitle": "Start free and upgrade as you grow",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "popular": "Most Popular",
+      "choose_plan": "Choose This Plan"
+    },
+    "faq": {
+      "title": "Frequently Asked Questions",
+      "subtitle": "Everything you need to know"
+    },
+    "cta": {
+      "title": "Ready to Start Your Marketing Journey?",
+      "subtitle": "Join thousands of businesses using Marketa",
+      "button": "Start Free Now"
+    }
+  },
+  "dashboard": {
+    "welcome": "Welcome",
+    "overview": "Overview",
+    "quick_actions": "Quick Actions",
+    "create_campaign": "Create New Campaign",
+    "manage_brands": "Manage Brand Identity",
+    "view_plans": "View Plans",
+    "usage_today": "Usage Today",
+    "requests_remaining": "Requests Remaining",
+    "tokens_used": "Tokens Used",
+    "resets_in": "Resets in",
+    "recent_campaigns": "Recent Campaigns",
+    "total_campaigns": "Total Campaigns",
+    "posts_created": "Posts Created",
+    "active_campaigns": "Active Campaigns"
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "campaigns": "Campaigns",
+    "brands": "Brand Identity",
+    "usage": "Usage & Stats",
+    "profile": "Profile",
+    "settings": "Settings",
+    "upgrade": "Upgrade Plan"
+  },
+  "campaigns": {
+    "title": "Campaigns",
+    "create": "Create Campaign",
+    "edit": "Edit Campaign",
+    "delete": "Delete Campaign",
+    "name": "Campaign Name",
+    "description": "Description",
+    "status": "Status",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "posts": "Posts",
+    "actions": "Actions",
+    "businessTypes": {
+      "restaurant": "Restaurant",
+      "retail": "Retail",
+      "services": "Services",
+      "healthcare": "Healthcare",
+      "education": "Education",
+      "technology": "Technology",
+      "fashion": "Fashion",
+      "beauty": "Beauty",
+      "fitness": "Fitness",
+      "realEstate": "Real Estate",
+      "automotive": "Automotive",
+      "travel": "Travel",
+      "food": "Food",
+      "entertainment": "Entertainment",
+      "other": "Other"
+    },
+    "wizard": {
+      "title": "Create New Campaign",
+      "subtitle": "Let AI help you create an amazing marketing campaign",
+      "step": "Step",
+      "generating": "Generating Campaign",
+      "generatingDescription": "AI is creating your personalized marketing campaign...",
+      "step1": {
+        "title": "Business Basics",
+        "subtitle": "Tell us about your business",
+        "businessType": "Business Type",
+        "productName": "Product/Service Name",
+        "productNamePlaceholder": "Enter your product or service name",
+        "description": "Description",
+        "descriptionPlaceholder": "Describe your product or service in 2-3 sentences",
+        "descriptionHelp": "This helps AI understand your business better"
+      },
+      "step2": {
+        "title": "Campaign Goals",
+        "subtitle": "What do you want to achieve?",
+        "campaignGoal": "Campaign Goal",
+        "targetAudience": "Target Audience",
+        "ageRange": "Age Range",
+        "gender": "Gender",
+        "interests": "Interests",
+        "location": "Location",
+        "locationPlaceholder": "e.g., Saudi Arabia, UAE, Global",
+        "duration": "Campaign Duration"
+      },
+      "step3": {
+        "title": "Brand & Preferences",
+        "subtitle": "Customize your campaign style",
+        "brandSelection": "Brand Selection",
+        "aiColors": "AI Color Suggestion",
+        "aiColorsDesc": "Let AI suggest colors based on your description",
+        "manualColors": "Manual Colors",
+        "manualColorsDesc": "Choose your own colors",
+        "createBrand": "Create New Brand",
+        "createBrandDesc": "Save brand for future campaigns",
+        "chooseColors": "Choose Color Palette",
+        "primaryColor": "Primary Color",
+        "secondaryColor": "Secondary Color",
+        "accentColor": "Accent Color",
+        "platforms": "Social Media Platforms",
+        "postsPerWeek": "Posts per Week"
+      },
+      "step4": {
+        "title": "Preview & Generate",
+        "subtitle": "Review and generate your campaign",
+        "campaignGoal": "Campaign Goal",
+        "duration": "Duration",
+        "campaignStructure": "Campaign Structure",
+        "totalPosts": "Total Posts",
+        "weeks": "Weeks",
+        "postsPerWeek": "Posts/Week",
+        "platforms": "Platforms",
+        "platformBreakdown": "Platform Breakdown",
+        "contentThemes": "Content Themes",
+        "suggestedTopics": "Suggested Topics",
+        "weeklyDistribution": "Weekly Distribution",
+        "generatePreview": "Generate Preview",
+        "generateCampaign": "Generate Campaign",
+        "generatingPreview": "Generating Preview",
+        "generatingDescription": "AI is analyzing your requirements...",
+        "previewError": "Preview Generation Failed",
+        "previewErrorDesc": "Unable to generate campaign preview. Please try again."
+      }
+    }
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "loading": "Loading...",
+    "no_data": "No data available",
+    "search": "Search",
+    "filter": "Filter",
+    "actions": "Actions",
+    "status": "Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "language": "Language",
+    "arabic": "العربية",
+    "english": "English",
+    "next": "Next",
+    "back": "Back",
+    "complete": "Complete",
+    "of": "of",
+    "post": "Post",
+    "posts": "Posts",
+    "weeks": "Weeks",
+    "selectOption": "Select an option",
+    "tryAgain": "Try Again"
+  },
+  "footer": {
+    "about": "About",
+    "features": "Features",
+    "pricing": "Pricing",
+    "contact": "Contact Us",
+    "privacy": "Privacy Policy",
+    "terms": "Terms & Conditions",
+    "all_rights_reserved": "All rights reserved"
+  }
+}
+

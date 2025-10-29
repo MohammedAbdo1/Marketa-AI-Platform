@@ -1,0 +1,260 @@
+
+services:
+  # Redis for caching and message broker
+  redis:
+    image: redis:7-alpine
+    container_name: marketa_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL database
+  postgres:
+    image: postgres:15-alpine
+    container_name: marketa_postgres
+    environment:
+      POSTGRES_DB: marketing_ai
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d marketing_ai"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Laravel Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: marketa_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=marketing_ai
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=123456
+      - QUEUE_CONNECTION=redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PYTHON_AI_URL=http://api:8001/api
+      - PYTHON_AI_TIMEOUT=300
+      - SANCTUM_STATEFUL_DOMAINS=localhost:3000,localhost:3001,127.0.0.1:3000,127.0.0.1:3001
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/var/www/html
+    command: php artisan serve --host=0.0.0.0 --port=8000
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+
+  # Laravel Queue Workers (High Priority)
+  backend-queue-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - APP_ENV=production
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=marketing_ai
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=123456
+      - QUEUE_CONNECTION=redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PYTHON_AI_URL=http://api:8001/api
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    volumes:
+      - ./backend:/var/www/html
+    command: php artisan queue:work redis --queue=campaign-generation,default --tries=3 --timeout=600 --sleep=3 --verbose
+    deploy:
+      replicas: 3
+
+  # Laravel Queue Worker (Low Priority)
+  backend-queue-worker-low:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - APP_ENV=production
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=marketing_ai
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=123456
+      - QUEUE_CONNECTION=redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PYTHON_AI_URL=http://api:8001/api
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    volumes:
+      - ./backend:/var/www/html
+    command: php artisan queue:work redis --queue=low-priority --tries=3 --timeout=300 --sleep=5 --verbose
+    deploy:
+      replicas: 2
+
+  # FastAPI application
+  api:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: marketa_api
+    ports:
+      - "8001:8001"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE_URL=postgresql://postgres:123456@postgres:5432/marketing_ai
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./ai-service:/app
+    command: python -m uvicorn app.main:sio_app --host 0.0.0.0 --port 8001 --reload
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+
+  # Celery worker for background tasks
+  celery_worker:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./ai-service:/app
+    command: celery -A celery_app worker --loglevel=info --concurrency=4 --queues=celery,campaign_generation,preview_generation,text_regeneration,image_regeneration
+    deploy:
+      replicas: 2
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A celery_app status | grep 'OK' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Celery flower for monitoring
+  celery_flower:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: marketa_celery_flower
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./ai-service:/app
+    command: celery -A celery_app flower --port=5555
+
+  # Frontend User Interface
+  frontend-user:
+    build:
+      context: ./frontend-user
+      dockerfile: Dockerfile
+    container_name: marketa_frontend_user
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
+      - VITE_AI_SERVICE_URL=http://localhost:8001
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend-user:/app
+      - /app/node_modules
+    command: npm run dev -- --host 0.0.0.0 --port 3000
+
+  # Frontend Admin Interface
+  frontend-admin:
+    build:
+      context: ./frontend-admin
+      dockerfile: Dockerfile
+    container_name: marketa_frontend_admin
+    ports:
+      - "3001:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend-admin:/app
+      - /app/node_modules
+    command: npm run dev -- --host 0.0.0.0 --port 3000
+
+  # Nginx load balancer
+  nginx:
+    image: nginx:alpine
+    container_name: marketa_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - backend
+      - frontend-user
+      - frontend-admin
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost/health"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+
+volumes:
+  redis_data:
+  postgres_data:
+
+networks:
+  default:
+    name: marketa_network

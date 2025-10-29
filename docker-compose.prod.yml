@@ -1,0 +1,249 @@
+version: '3.8'
+
+services:
+  # Redis Cluster for high availability
+  redis-master:
+    image: redis:7-alpine
+    container_name: marketa_redis_master
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_master_data:/data
+    command: redis-server --appendonly yes --replica-read-only no
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis-replica:
+    image: redis:7-alpine
+    container_name: marketa_redis_replica
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_replica_data:/data
+    command: redis-server --appendonly yes --replicaof redis-master 6379
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL with replication
+  postgres-master:
+    image: postgres:15-alpine
+    container_name: marketa_postgres_master
+    environment:
+      POSTGRES_DB: marketing_ai
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_master_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marketa_user -d marketa_ai"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  postgres-replica:
+    image: postgres:15-alpine
+    container_name: marketa_postgres_replica
+    environment:
+      POSTGRES_DB: marketing_ai
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_replica_data:/var/lib/postgresql/data
+    depends_on:
+      postgres-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d marketing_ai"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Multiple FastAPI instances for load balancing
+  api-1:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: marketa_api_1
+    environment:
+      - REDIS_URL=redis://redis-master:6379/0
+      - CELERY_BROKER_URL=redis://redis-master:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis-master:6379/0
+      - DATABASE_URL=postgresql://postgres:123456@postgres-master:5432/marketing_ai
+    depends_on:
+      redis-master:
+        condition: service_healthy
+      postgres-master:
+        condition: service_healthy
+    command: python -m uvicorn app.main:app --host 0.0.0.0 --port 8001 --workers 4
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  api-2:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: marketa_api_2
+    environment:
+      - REDIS_URL=redis://redis-master:6379/0
+      - CELERY_BROKER_URL=redis://redis-master:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis-master:6379/0
+      - DATABASE_URL=postgresql://postgres:123456@postgres-master:5432/marketing_ai
+    depends_on:
+      redis-master:
+        condition: service_healthy
+      postgres-master:
+        condition: service_healthy
+    command: python -m uvicorn app.main:app --host 0.0.0.0 --port 8001 --workers 4
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Multiple Celery workers
+  celery-worker-1:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: marketa_celery_worker_1
+    environment:
+      - REDIS_URL=redis://redis-master:6379/0
+      - CELERY_BROKER_URL=redis://redis-master:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis-master:6379/0
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    command: celery -A celery_app worker --loglevel=info --concurrency=8 --queues=campaign_generation,preview_generation
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+
+  celery-worker-2:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: marketa_celery_worker_2
+    environment:
+      - REDIS_URL=redis://redis-master:6379/0
+      - CELERY_BROKER_URL=redis://redis-master:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis-master:6379/0
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    command: celery -A celery_app worker --loglevel=info --concurrency=8 --queues=text_regeneration,image_regeneration
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+
+  celery-worker-3:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: marketa_celery_worker_3
+    environment:
+      - REDIS_URL=redis://redis-master:6379/0
+      - CELERY_BROKER_URL=redis://redis-master:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis-master:6379/0
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    command: celery -A celery_app worker --loglevel=info --concurrency=4 --queues=default
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  # Celery flower for monitoring
+  celery-flower:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: marketa_celery_flower
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis-master:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis-master:6379/0
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    command: celery -A celery_app flower --port=5555
+
+  # Nginx load balancer with SSL
+  nginx:
+    image: nginx:alpine
+    container_name: marketa_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.prod.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - api-1
+      - api-2
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Monitoring with Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: marketa_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+
+  # Grafana for dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: marketa_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+volumes:
+  redis_master_data:
+  redis_replica_data:
+  postgres_master_data:
+  postgres_replica_data:
+  grafana_data:
+
+networks:
+  default:
+    name: marketa_prod_network

@@ -1,0 +1,225 @@
+{
+  "app": {
+    "name": "مركتة",
+    "tagline": "منصة التسويق بالذكاء الاصطناعي"
+  },
+  "nav": {
+    "home": "الرئيسية",
+    "about": "من نحن",
+    "pricing": "الأسعار",
+    "faq": "الأسئلة الشائعة",
+    "login": "تسجيل الدخول",
+    "register": "إنشاء حساب",
+    "start_free": "ابدأ مجاناً"
+  },
+  "auth": {
+    "login": "تسجيل الدخول",
+    "register": "إنشاء حساب",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "confirm_password": "تأكيد كلمة المرور",
+    "name": "الاسم الكامل",
+    "remember_me": "تذكرني",
+    "forgot_password": "نسيت كلمة المرور؟",
+    "reset_password": "إعادة تعيين كلمة المرور",
+    "verify_email": "تحقق من البريد الإلكتروني",
+    "continue_with_google": "تسجيل الدخول عبر Google",
+    "already_have_account": "لديك حساب بالفعل؟",
+    "dont_have_account": "ليس لديك حساب؟",
+    "terms_agree": "أوافق على الشروط والأحكام",
+    "send_reset_link": "إرسال رابط إعادة التعيين",
+    "back_to_login": "العودة لتسجيل الدخول",
+    "email_verification_sent": "تم إرسال رابط التحقق إلى بريدك الإلكتروني"
+  },
+  "landing": {
+    "hero": {
+      "title": "منصة التسويق الذكية للأعمال العربية",
+      "subtitle": "أنشئ حملات تسويقية كاملة بالذكاء الاصطناعي في دقائق",
+      "cta_primary": "ابدأ مجاناً",
+      "cta_secondary": "شاهد كيف يعمل"
+    },
+    "features": {
+      "title": "كل ما تحتاجه لتسويق ناجح",
+      "subtitle": "أدوات قوية بسيطة الاستخدام"
+    },
+    "testimonials": {
+      "title": "ماذا يقول عملاؤنا",
+      "subtitle": "آراء حقيقية من مستخدمين حقيقيين"
+    },
+    "pricing": {
+      "title": "خطط بأسعار مناسبة للجميع",
+      "subtitle": "ابدأ مجاناً وارتقِ حسب احتياجك",
+      "monthly": "شهرياً",
+      "yearly": "سنوياً",
+      "popular": "الأكثر شعبية",
+      "choose_plan": "اختر هذه الباقة"
+    },
+    "faq": {
+      "title": "الأسئلة الشائعة",
+      "subtitle": "كل ما تحتاج معرفته"
+    },
+    "cta": {
+      "title": "جاهز لبدء رحلتك التسويقية؟",
+      "subtitle": "انضم إلى آلاف الشركات التي تستخدم مركتة",
+      "button": "ابدأ مجاناً الآن"
+    }
+  },
+  "dashboard": {
+    "welcome": "مرحباً",
+    "overview": "نظرة عامة",
+    "quick_actions": "إجراءات سريعة",
+    "create_campaign": "إنشاء حملة جديدة",
+    "manage_brands": "إدارة الهوية البصرية",
+    "view_plans": "عرض الباقات",
+    "usage_today": "الاستخدام اليوم",
+    "requests_remaining": "طلبات متبقية",
+    "tokens_used": "توكنات مستخدمة",
+    "resets_in": "يتجدد خلال",
+    "recent_campaigns": "الحملات الأخيرة",
+    "total_campaigns": "إجمالي الحملات",
+    "posts_created": "المنشورات المنشأة",
+    "active_campaigns": "حملات نشطة"
+  },
+  "sidebar": {
+    "dashboard": "لوحة التحكم",
+    "campaigns": "الحملات",
+    "brands": "الهوية البصرية",
+    "usage": "الاستخدام والإحصائيات",
+    "profile": "الملف الشخصي",
+    "settings": "الإعدادات",
+    "upgrade": "ترقية الباقة"
+  },
+  "campaigns": {
+    "title": "الحملات",
+    "create": "إنشاء حملة",
+    "edit": "تعديل الحملة",
+    "delete": "حذف الحملة",
+    "name": "اسم الحملة",
+    "description": "الوصف",
+    "status": "الحالة",
+    "startDate": "تاريخ البداية",
+    "endDate": "تاريخ النهاية",
+    "posts": "المنشورات",
+    "actions": "الإجراءات",
+    "businessTypes": {
+      "restaurant": "مطعم",
+      "retail": "تجارة التجزئة",
+      "services": "خدمات",
+      "healthcare": "الرعاية الصحية",
+      "education": "التعليم",
+      "technology": "التكنولوجيا",
+      "fashion": "الأزياء",
+      "beauty": "الجمال",
+      "fitness": "اللياقة البدنية",
+      "realEstate": "العقارات",
+      "automotive": "السيارات",
+      "travel": "السفر",
+      "food": "الطعام",
+      "entertainment": "الترفيه",
+      "other": "أخرى"
+    },
+    "wizard": {
+      "title": "إنشاء حملة جديدة",
+      "subtitle": "دع الذكاء الاصطناعي يساعدك في إنشاء حملة تسويقية مذهلة",
+      "step": "الخطوة",
+      "generating": "جاري إنشاء الحملة",
+      "generatingDescription": "الذكاء الاصطناعي ينشئ حملتك التسويقية المخصصة...",
+      "step1": {
+        "title": "أساسيات العمل",
+        "subtitle": "أخبرنا عن عملك",
+        "businessType": "نوع العمل",
+        "productName": "اسم المنتج/الخدمة",
+        "productNamePlaceholder": "أدخل اسم منتجك أو خدمتك",
+        "description": "الوصف",
+        "descriptionPlaceholder": "اوصف منتجك أو خدمتك في 2-3 جمل",
+        "descriptionHelp": "هذا يساعد الذكاء الاصطناعي على فهم عملك بشكل أفضل"
+      },
+      "step2": {
+        "title": "أهداف الحملة",
+        "subtitle": "ماذا تريد أن تحقق؟",
+        "campaignGoal": "هدف الحملة",
+        "targetAudience": "الجمهور المستهدف",
+        "ageRange": "الفئة العمرية",
+        "gender": "الجنس",
+        "interests": "الاهتمامات",
+        "location": "الموقع",
+        "locationPlaceholder": "مثل: السعودية، الإمارات، عالمي",
+        "duration": "مدة الحملة"
+      },
+      "step3": {
+        "title": "الهوية والتفضيلات",
+        "subtitle": "خصص أسلوب حملتك",
+        "brandSelection": "اختيار العلامة التجارية",
+        "aiColors": "اقتراح ألوان بالذكاء الاصطناعي",
+        "aiColorsDesc": "دع الذكاء الاصطناعي يقترح ألواناً بناءً على وصفك",
+        "manualColors": "ألوان يدوية",
+        "manualColorsDesc": "اختر ألوانك الخاصة",
+        "createBrand": "إنشاء علامة تجارية جديدة",
+        "createBrandDesc": "احفظ العلامة التجارية للحملات المستقبلية",
+        "chooseColors": "اختر لوحة الألوان",
+        "primaryColor": "اللون الأساسي",
+        "secondaryColor": "اللون الثانوي",
+        "accentColor": "لون التمييز",
+        "platforms": "منصات التواصل الاجتماعي",
+        "postsPerWeek": "المنشورات في الأسبوع"
+      },
+      "step4": {
+        "title": "معاينة وإنشاء",
+        "subtitle": "راجع وأنشئ حملتك",
+        "campaignGoal": "هدف الحملة",
+        "duration": "المدة",
+        "campaignStructure": "هيكل الحملة",
+        "totalPosts": "إجمالي المنشورات",
+        "weeks": "الأسابيع",
+        "postsPerWeek": "منشورات/أسبوع",
+        "platforms": "المنصات",
+        "platformBreakdown": "توزيع المنصات",
+        "contentThemes": "مواضيع المحتوى",
+        "suggestedTopics": "المواضيع المقترحة",
+        "weeklyDistribution": "التوزيع الأسبوعي",
+        "generatePreview": "إنشاء معاينة",
+        "generateCampaign": "إنشاء الحملة",
+        "generatingPreview": "جاري إنشاء المعاينة",
+        "generatingDescription": "الذكاء الاصطناعي يحلل متطلباتك...",
+        "previewError": "فشل في إنشاء المعاينة",
+        "previewErrorDesc": "غير قادر على إنشاء معاينة الحملة. يرجى المحاولة مرة أخرى."
+      }
+    }
+  },
+  "common": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "loading": "جاري التحميل...",
+    "no_data": "لا توجد بيانات",
+    "search": "بحث",
+    "filter": "تصفية",
+    "actions": "الإجراءات",
+    "status": "الحالة",
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "language": "اللغة",
+    "arabic": "العربية",
+    "english": "English",
+    "next": "التالي",
+    "back": "السابق",
+    "complete": "مكتمل",
+    "of": "من",
+    "post": "منشور",
+    "posts": "منشورات",
+    "weeks": "أسابيع",
+    "selectOption": "اختر خياراً",
+    "tryAgain": "حاول مرة أخرى"
+  },
+  "footer": {
+    "about": "عن المنصة",
+    "features": "الميزات",
+    "pricing": "الأسعار",
+    "contact": "اتصل بنا",
+    "privacy": "سياسة الخصوصية",
+    "terms": "الشروط والأحكام",
+    "all_rights_reserved": "جميع الحقوق محفوظة"
+  }
+}
+

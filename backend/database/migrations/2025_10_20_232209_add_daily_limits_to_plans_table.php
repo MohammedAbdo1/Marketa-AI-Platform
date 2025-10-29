@@ -1,0 +1,29 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('plans', function (Blueprint $table) {
+            $table->integer('daily_requests_limit')->default(20)->after('tokens_limit');
+            $table->json('features_limits')->nullable()->after('daily_requests_limit');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('plans', function (Blueprint $table) {
+            $table->dropColumn(['daily_requests_limit', 'features_limits']);
+        });
+    }
+};

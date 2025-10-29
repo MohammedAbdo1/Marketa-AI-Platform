@@ -1,0 +1,621 @@
+.cke_notifications_area {
+    pointer-events: none;
+    display: none;
+}
+
+
+.form-group{
+    margin-bottom: 12px;
+}
+.modal-footer{
+    margin-top: 20px;
+}
+
+.tox-notifications-container {
+    display: none;
+}
+
+
+body, h4, h5, h6 {
+    font-family: 'Cairo', sans-serif;
+}
+
+
+body {
+    color: #232323;
+}
+
+
+.side-nav .side-nav-item .side-nav-link {
+    color: #232323;
+}
+
+.page-title {
+    color: #232323;
+}
+
+.app-topbar .topbar-menu .topbar-item .topbar-link {
+    color: #232323;
+}
+
+
+.footer {
+    color: #232323;
+}
+
+.footer .footer-links a {
+    color: #232323;
+}
+
+.form-label {
+    margin-bottom: .2rem;
+}
+
+.table-sm>:not(caption)>*>* {
+    padding: .5rem .3rem;
+}
+
+.table>:not(caption)>*>* {
+    color: #232323;
+    font-size: 13px;
+}
+.card-box {
+    padding: 10px;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
+    margin-bottom: 10px;
+    border: 1px solid #e0e0e0;
+}
+/* table{
+    margin-bottom: 0px !important;
+} */
+.btn-xs{
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    border-radius: 0.2rem;
+}
+/* ////////////////// */
+/* Dark Blue Theme for Sidenav and Topbar */
+.sidenav-menu {
+    background-color: #21304A !important;
+}
+.sidenav-toggle-button i {
+    color: #21304a !important;
+}
+
+.app-topbar {
+    background-color: #21304A !important;
+}
+
+/* White text and icons for sidenav menu */
+.sidenav-menu .side-nav .side-nav-item .side-nav-link {
+    color: #ffffff !important;
+}
+
+.sidenav-menu .side-nav .side-nav-item .side-nav-link .menu-icon {
+    color: #ffffff !important;
+}
+
+.sidenav-menu .side-nav .side-nav-item .side-nav-link .menu-text {
+    color: #ffffff !important;
+}
+
+/* Active menu item styling */
+.sidenav-menu .side-nav .side-nav-item .side-nav-link.active,
+.sidenav-menu .side-nav .side-nav-item .side-nav-link:hover {
+    background-color: #34496B !important;
+    color: #ffffff !important;
+}
+
+/* White text and icons for topbar */
+.app-topbar .topbar-menu .topbar-item .topbar-link {
+    color: #ffffff !important;
+}
+
+.app-topbar .topbar-menu .topbar-item .topbar-link i {
+    color: #ffffff !important;
+}
+
+.app-topbar .topbar-menu .topbar-item .topbar-link .page-title {
+    color: #ffffff !important;
+}
+
+/* Logo styling in topbar */
+.app-topbar .logo {
+    color: #ffffff !important;
+}
+
+/* Dropdown menu styling in topbar */
+.app-topbar .dropdown-menu {
+    background-color: #ffffff !important;
+    border: 1px solid #e0e0e0 !important;
+}
+
+.app-topbar .dropdown-item {
+    color: #232323 !important;
+}
+
+.app-topbar .dropdown-item:hover {
+    background-color: #f8f9fa !important;
+    color: #232323 !important;
+}
+
+/* Sidenav toggle button styling */
+.sidenav-toggle-button {
+    color: #ffffff !important;
+}
+
+.sidenav-toggle-button i {
+    color: #ffffff !important;
+}
+
+/* Topbar toggle button styling */
+.topnav-toggle-button {
+    color: #ffffff !important;
+}
+.sidenav-menu .sidenav-toggle-button{
+    background-color: #21304a !important;
+}
+
+.topnav-toggle-button i {
+    color: #ffffff !important;
+}
+
+/* Language dropdown styling */
+.app-topbar .dropdown-toggle::after {
+    color: #ffffff !important;
+}
+
+/* Notification icon styling */
+.app-topbar .topbar-item .topbar-link .ri-notification-snooze-line {
+    color: #ffffff !important;
+}
+
+/* User dropdown styling */
+.app-topbar .nav-user .topbar-link {
+    color: #ffffff !important;
+}
+
+.app-topbar .nav-user .topbar-link span {
+    color: #ffffff !important;
+}
+
+.app-topbar .nav-user .topbar-link i {
+    color: #ffffff !important;
+}
+
+/* Dashboard Enhancements */
+.dashboard-header {
+    background: linear-gradient(135deg, #21304A 0%, #34496B 100%) !important;
+    color: white !important;
+    padding: 30px !important;
+    border-radius: 15px !important;
+    margin-bottom: 30px !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important;
+}
+
+.kpi-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    border-radius: 15px !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important;
+    border: none !important;
+    transition: transform 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+.kpi-card:hover {
+    transform: translateY(-5px) !important;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.2) !important;
+}
+
+.kpi-card.success {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%) !important;
+}
+
+.kpi-card.warning {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+}
+
+.kpi-card.info {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+}
+
+.chart-container {
+    position: relative !important;
+    height: 400px !important;
+    margin: 20px 0 !important;
+}
+
+.growth-indicator {
+    font-size: 0.9rem !important;
+    font-weight: bold !important;
+}
+
+.growth-positive {
+    color: #28a745 !important;
+}
+
+.growth-negative {
+    color: #dc3545 !important;
+}
+
+/* Card Enhancements */
+
+
+
+/* Date Range Filter Styling */
+.date-filter-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    border: 1px solid #dee2e6 !important;
+}
+
+.date-filter-card .form-select {
+    border: 2px solid #21304A !important;
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+}
+
+.date-filter-card .form-select:focus {
+    border-color: #34496B !important;
+    box-shadow: 0 0 0 0.2rem rgba(33, 48, 74, 0.25) !important;
+}
+
+.date-filter-badge {
+    background: linear-gradient(135deg, #21304A 0%, #34496B 100%) !important;
+    color: white !important;
+    border-radius: 20px !important;
+    padding: 8px 16px !important;
+    font-weight: 600 !important;
+}
+
+/* Custom Date Range Modal Styling */
+#customDateRangeModal .modal-content {
+    border-radius: 15px !important;
+    border: none !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
+}
+
+#customDateRangeModal .modal-header {
+    background: linear-gradient(135deg, #21304A 0%, #34496B 100%) !important;
+    color: white !important;
+    border-radius: 15px 15px 0 0 !important;
+    border: none !important;
+}
+
+#customDateRangeModal .modal-title {
+    font-weight: 600 !important;
+}
+
+#customDateRangeModal .preset-option {
+    border: none !important;
+    border-radius: 8px !important;
+    margin-bottom: 2px !important;
+    transition: all 0.3s ease !important;
+    font-weight: 500 !important;
+}
+
+#customDateRangeModal .preset-option:hover {
+    background-color: #e9ecef !important;
+    transform: translateX(5px) !important;
+}
+
+#customDateRangeModal .preset-option.active {
+    background: linear-gradient(135deg, #21304A 0%, #34496B 100%) !important;
+    color: white !important;
+    font-weight: 600 !important;
+}
+
+#customDateRangeModal .flatpickr-calendar {
+    border-radius: 10px !important;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
+    border: 1px solid #dee2e6 !important;
+}
+
+#customDateRangeModal .flatpickr-day.selected {
+    background: #21304A !important;
+    border-color: #21304A !important;
+}
+
+#customDateRangeModal .flatpickr-day:hover {
+    background: #34496B !important;
+    border-color: #34496B !important;
+}
+
+#customDateRangeModal .input-group-text {
+    background: linear-gradient(135deg, #21304A 0%, #34496B 100%) !important;
+    color: white !important;
+    border: none !important;
+    font-weight: 600 !important;
+}
+
+#customDateRangeModal .btn-primary {
+    background: linear-gradient(135deg, #21304A 0%, #34496B 100%) !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    padding: 10px 20px !important;
+}
+
+#customDateRangeModal .btn-primary:hover {
+    background: linear-gradient(135deg, #34496B 0%, #21304A 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 5px 15px rgba(33, 48, 74, 0.3) !important;
+}
+
+#customDateRangeModal .btn-outline-secondary {
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+}
+
+#customDateRangeModal .bg-light {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    border-radius: 10px !important;
+    border: 1px solid #dee2e6 !important;
+}
+
+/* Chart Responsiveness */
+@media (max-width: 768px) {
+    .chart-container {
+        height: 300px !important;
+    }
+    
+    .kpi-card .fs-1 {
+        font-size: 2rem !important;
+    }
+    
+    .dashboard-header h1 {
+        font-size: 2rem !important;
+    }
+    
+    .date-filter-card .d-flex {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+    
+    .date-filter-card .form-select {
+        width: 100% !important;
+        margin-top: 10px !important;
+    }
+}
+
+/* Responsive Header and Body Fixes */
+@media (max-width: 767.98px) {
+    /* Fix topbar layout for mobile */
+    
+    .app-topbar .topbar-menu .topbar-item {
+        flex-shrink: 0 !important;
+        min-width: auto !important;
+    }
+    
+    /* Ensure logo displays properly */
+    .app-topbar .logo {
+        display: block !important;
+        flex-shrink: 0 !important;
+    }
+    
+    .app-topbar .logo span.logo-lg {
+        display: none !important;
+    }
+    
+    .app-topbar .logo span.logo-sm {
+        display: block !important;
+    }
+    
+
+
+    
+    /* Fix user dropdown */
+    .app-topbar .nav-user .topbar-link {
+        padding: 0.5rem !important;
+    }
+    
+
+    
+    /* Fix notification dropdown */
+    .app-topbar .topbar-item .topbar-link {
+        padding: 0.5rem !important;
+    }
+    
+    /* Fix search button */
+    .app-topbar .topbar-item .topbar-link .ri-search-line {
+        font-size: 1.2rem !important;
+    }
+    
+
+    .sidenav-toggle-button i,
+    .topnav-toggle-button i {
+        font-size: 1.2rem !important;
+    }
+    
+    /* Fix sidenav positioning for medium screens */
+    /* .sidenav-menu {
+        width: 100% !important;
+        max-width: 100% !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 1050 !important;
+    } */
+    
+    /* Ensure topbar takes full width */
+    .app-topbar {
+        width: 100% !important;
+        max-width: 100% !important;
+        left: 0 !important;
+        right: 0 !important;
+        position: fixed !important;
+        top: 0 !important;
+        z-index: 1040 !important;
+    }
+    
+    /* Adjust page content to account for fixed topbar */
+    .page-content {
+        margin-top: var(--ct-topbar-height, 70px) !important;
+    }
+}
+
+@media (max-width: 575.98px) {
+    /* Extra small screens - further optimizations */
+    .app-topbar .topbar-menu {
+        padding: 0 0.5rem !important;
+        gap: 0.25rem !important;
+    }
+    
+    .app-topbar .topbar-item {
+        padding: 0 !important;
+    }
+    
+    .app-topbar .topbar-item .topbar-link {
+        padding: 0.375rem !important;
+        min-width: 40px !important;
+    }
+    
+    .app-topbar .logo {
+        padding: 0 0.5rem !important;
+    }
+    
+    .app-topbar .logo img {
+        max-width: 80px !important;
+        height: auto !important;
+    }
+    
+    /* Hide some elements on very small screens */
+    .app-topbar .topbar-item .topbar-link .mdi-chevron-down {
+        display: none !important;
+    }
+    
+    .app-topbar .nav-user .topbar-link .ri-arrow-down-s-line {
+        display: none !important;
+    }
+    
+    /* Fix sidenav positioning for extra small screens */
+    /* .sidenav-menu {
+        width: 100% !important;
+        max-width: 100% !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 1050 !important;
+    } */
+    
+    /* Ensure topbar takes full width */
+    .app-topbar {
+        width: 100% !important;
+        max-width: 100% !important;
+        left: 0 !important;
+        right: 0 !important;
+        position: fixed !important;
+        top: 0 !important;
+        z-index: 1040 !important;
+    }
+}
+
+/* Body and Page Content Responsive Fixes */
+@media (max-width: 767.98px) {
+    /* Fix KPI cards layout */
+    .kpi-card {
+        margin-bottom: 1rem !important;
+        padding: 1.5rem !important;
+    }
+    
+    .kpi-card .fs-1 {
+        font-size: 2rem !important;
+    }
+    
+    /* Fix date filter card */
+    .date-filter-card {
+        margin-bottom: 1rem !important;
+        padding: 1rem !important;
+    }
+    
+    .date-filter-card .d-flex {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.5rem !important;
+    }
+    
+    .date-filter-card .form-select {
+        width: 100% !important;
+        margin: 0 !important;
+    }
+    
+    .date-filter-badge {
+        width: 100% !important;
+        text-align: center !important;
+        margin-top: 0.5rem !important;
+    }
+    
+    /* Fix chart containers */
+    .chart-container {
+        height: 250px !important;
+        margin: 1rem 0 !important;
+    }
+    
+    /* Fix table responsiveness */
+    .table-responsive {
+        border: none !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    /* Fix card spacing */
+    .card {
+        margin-bottom: 1rem !important;
+    }
+    
+    .card-body {
+        padding: 1rem !important;
+    }
+    
+
+    
+    /* Fix button groups */
+    .btn-group {
+        width: 100% !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+    }
+    
+    .btn-group .btn {
+        flex: 1 !important;
+        margin: 0.125rem !important;
+    }
+}
+
+@media (max-width: 575.98px) {
+    
+    
+    
+    .kpi-card {
+        padding: 1rem !important;
+    }
+    
+    .kpi-card .fs-1 {
+        font-size: 1.75rem !important;
+    }
+    
+    .date-filter-card {
+        padding: 0.75rem !important;
+    }
+    
+    .chart-container {
+        height: 200px !important;
+    }
+    
+    .card-body {
+        padding: 0.75rem !important;
+    }
+    
+    /* Stack buttons vertically on very small screens */
+    .btn-group {
+        flex-direction: column !important;
+    }
+    
+    .btn-group .btn {
+        width: 100% !important;
+        margin: 0.125rem 0 !important;
+    }
+}
+
+
+
+

@@ -5,6 +5,22 @@ import asyncio
 import json
 import re
 
+
+def _check_composition_needed(description: str) -> bool:
+    """
+    Quick check: Does this description need composition?
+    Returns True if description mentions text overlays, logos, or complex elements
+    """
+    composition_keywords = [
+        # Arabic
+        "اكتب", "نص", "عنوان", "كلمة", "لوجو", "شاشة", "شعار", "ضع",
+        # English
+        "write", "text", "caption", "title", "logo", "screen", "add", "put"
+    ]
+    
+    description_lower = description.lower()
+    return any(keyword in description_lower for keyword in composition_keywords)
+
 class ContentWriterAgent:
     def __init__(self):
         if settings.GOOGLE_API_KEY:
@@ -19,6 +35,15 @@ class ContentWriterAgent:
             )
         else:
             self.model = None
+        
+        # Initialize composition analyzer if available
+        self.composition_analyzer = None
+        if settings.IMAGE_COMPOSITION_ENABLED and settings.GOOGLE_API_KEY:
+            try:
+                from app.agents.composition_analyzer import CompositionAnalyzerAgent
+                self.composition_analyzer = CompositionAnalyzerAgent()
+            except Exception:
+                pass
     
     async def generate_posts(self, structure, request):
         """Generate marketing posts based on campaign structure.
@@ -131,7 +156,23 @@ class ContentWriterAgent:
                 if not content_ar and not content_en and generic:
                     # Store generic content in EN field to keep pipeline unchanged
                     content_en = generic
-                result.append({
+                # Check if composition is needed for this post
+                needs_composition = _check_composition_needed(getattr(request, 'description', ''))
+                composition_analysis = None
+                
+                # If composition is needed and analyzer is available, analyze the description
+                if needs_composition and self.composition_analyzer:
+                    try:
+                        composition_analysis = await self.composition_analyzer.analyze_description(
+                            getattr(request, 'description', ''),
+                            platform,
+                            getattr(request, 'business_type', '')
+                        )
+                    except Exception as e:
+                        # If analysis fails, continue without composition
+                        composition_analysis = None
+                
+                post_data = {
                     "platform": platform,
                     "post_type": item.get("post_type") or "text",
                     "content_ar": content_ar,
@@ -142,7 +183,16 @@ class ContentWriterAgent:
                     "image_prompt": item.get("image_prompt") or _build_image_prompt_from_request(request, platform),
                     "week": int(item.get("week") or 1 + (i // 7)),
                     "day": int(item.get("day") or 1 + (i % 7)),
-                })
+                }
+                
+                # Add composition data if available
+                if composition_analysis:
+                    post_data["needs_composition"] = True
+                    post_data["composition_analysis"] = composition_analysis
+                else:
+                    post_data["needs_composition"] = False
+                
+                result.append(post_data)
             
             # Cache the result
             cache_service.set_cached_ai_result(cache_key, result, "posts", settings.CACHE_TTL)

@@ -126,6 +126,21 @@ class GenerateCampaignPosts implements ShouldQueue
     protected function saveGeneratedPosts(array $posts): void
     {
         foreach ($posts as $index => $postData) {
+            // Check if this post needs composition
+            $needsComposition = $postData['needs_composition'] ?? false;
+            $compositionData = null;
+            $baseImageUrl = null;
+            $compositionLayers = null;
+            $compositionAnalysis = null;
+            
+            if ($needsComposition && isset($postData['composition_result'])) {
+                // Post was generated with composition
+                $compositionData = $postData['composition_result'];
+                $baseImageUrl = $compositionData['base_image_url'] ?? null;
+                $compositionLayers = $compositionData['layers'] ?? null;
+                $compositionAnalysis = $postData['composition_analysis'] ?? null;
+            }
+            
             CampaignPost::create([
                 'campaign_id' => $this->campaign->id,
                 'platform' => $postData['platform'] ?? 'instagram',
@@ -133,7 +148,8 @@ class GenerateCampaignPosts implements ShouldQueue
                 'content_ar' => $postData['content_ar'] ?? '',
                 'content_en' => $postData['content_en'] ?? '',
                 'hashtags' => is_array($postData['hashtags'] ?? []) ? json_encode($postData['hashtags']) : ($postData['hashtags'] ?? '[]'),
-                'media_urls' => isset($postData['image_url']) ? [$postData['image_url']] : [],
+                'media_urls' => isset($postData['image_url']) ? [$postData['image_url']] : 
+                              (isset($compositionData['final_image_url']) ? [$compositionData['final_image_url']] : []),
                 'media_prompts' => isset($postData['image_prompt']) ? [$postData['image_prompt']] : [],
                 'scheduled_date' => $this->calculateScheduledDate($postData),
                 'status' => 'pending',
@@ -142,7 +158,12 @@ class GenerateCampaignPosts implements ShouldQueue
                 'ai_cost' => $postData['cost'] ?? 0,
                 'order_number' => $index + 1,
                 'week_number' => $postData['week'] ?? 1,
-                'day_of_week' => $postData['day'] ?? 1
+                'day_of_week' => $postData['day'] ?? 1,
+                // Composition fields
+                'base_image_url' => $baseImageUrl,
+                'composition_layers' => $compositionLayers,
+                'is_composed' => $needsComposition,
+                'composition_analysis' => $compositionAnalysis,
             ]);
         }
     }

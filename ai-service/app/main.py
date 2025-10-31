@@ -8,7 +8,12 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import settings
 from app.models.campaign import CampaignPreviewRequest, CampaignPreviewResponse
-from app.models.post import PostGenerationRequest, PostGenerationResponse
+from app.models.post import (
+    PostGenerationRequest, PostGenerationResponse,
+    DescriptionAnalysisRequest, DescriptionAnalysisResponse,
+    ComposedImageRequest, ComposedImageResponse,
+    LayerRegenerationRequest
+)
 from app.tasks.campaign_tasks import (
     generate_campaign_task,
     generate_preview_task,
@@ -278,6 +283,95 @@ async def health_check_workers():
         }
     except Exception as e:
         return {"status": "unhealthy", "service": "Celery Workers", "error": str(e)}
+
+# ========================================
+# Composition & Image Editing Endpoints
+# ========================================
+
+@app.post("/api/post/analyze-description")
+async def analyze_description(request: DescriptionAnalysisRequest):
+    """
+    Analyze user description and extract composition components
+    
+    Returns structured analysis with:
+    - scene_description: Base scene without text
+    - text_overlays: Text to add with positions, colors, etc.
+    - screen_content: Content for screens/monitors
+    - objects_to_composite: Additional elements (logos, etc.)
+    """
+    try:
+        from app.agents.composition_analyzer import CompositionAnalyzerAgent
+        
+        analyzer = CompositionAnalyzerAgent()
+        
+        # Check if composition is needed
+        needs_comp = analyzer.needs_composition(request.description)
+        
+        if not needs_comp:
+            return DescriptionAnalysisResponse(
+                scene_description=request.description,
+                text_overlays=[],
+                screen_content=None,
+                objects_to_composite=[],
+                image_style="professional",
+                needs_composition=False
+            )
+        
+        # Analyze description
+        analysis = await analyzer.analyze_description(
+            request.description,
+            request.platform,
+            request.business_type
+        )
+        
+        return DescriptionAnalysisResponse(
+            **analysis,
+            needs_composition=True
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+@app.post("/api/post/generate-composed")
+async def generate_composed_image(request: ComposedImageRequest):
+    """
+    Generate composed image with text overlays and elements
+    
+    Takes analysis from analyze-description endpoint and generates final image
+    """
+    try:
+        from app.agents.image_gen import ImageGeneratorAgent
+        
+        generator = ImageGeneratorAgent()
+        
+        # Generate composed image
+        result = await generator.generate_composed_image(
+            request.analysis,
+            request.size
+        )
+        
+        return ComposedImageResponse(**result)
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")
+
+@app.post("/api/post/regenerate-layer")
+async def regenerate_layer(request: LayerRegenerationRequest):
+    """
+    Regenerate specific layer without affecting others
+    
+    Allows editing text, color, position of a specific layer
+    """
+    try:
+        # TODO: Implement layer regeneration logic
+        # For now, return placeholder
+        return {
+            "success": True,
+            "message": "Layer regeneration endpoint - implementation pending"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Layer regeneration failed: {str(e)}")
 
 # Rate limiting endpoints
 @app.get("/api/rate-limit/stats/{user_id}")

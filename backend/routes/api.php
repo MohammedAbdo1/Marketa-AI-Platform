@@ -105,6 +105,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('campaign-posts/{id}/regenerate', [CampaignPostController::class, 'regenerate']);
     Route::post('campaign-posts/{id}/generate-media', [CampaignPostController::class, 'generateMedia']);
     Route::put('campaign-posts/{id}/schedule', [CampaignPostController::class, 'schedule']);
+    
+    // Layer Management & Composition (for image editing)
+    Route::get('campaign-posts/{id}/layers', [CampaignPostController::class, 'exportLayers']);
+    Route::post('campaign-posts/{id}/layers', [CampaignPostController::class, 'addLayer']);
+    Route::put('campaign-posts/{id}/layers/{layerIndex}', [CampaignPostController::class, 'updateLayer']);
+    Route::delete('campaign-posts/{id}/layers/{layerIndex}', [CampaignPostController::class, 'removeLayer']);
+    Route::post('campaign-posts/{id}/layers/import', [CampaignPostController::class, 'importLayers']);
+    Route::post('campaign-posts/{id}/layers/{layerIndex}/regenerate', [CampaignPostController::class, 'regenerateLayer']);
 
     // AI Diagnostics (User-facing)
     Route::post('ai/test-text', [AIDiagnosticsController::class, 'testText'])->name('ai.test-text');

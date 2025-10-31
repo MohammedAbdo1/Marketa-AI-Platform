@@ -1,1 +1,66 @@
 # Add directories or file patterns to ignore during indexing (e.g. foo/ or *.csv)
+
+# Dependencies (HUGE directories)
+**/node_modules/
+**/vendor/
+node_modules/
+vendor/
+
+# Python cache
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.Python
+
+# Build outputs
+**/dist/
+**/build/
+dist/
+build/
+
+# Storage and cache
+**/storage/
+**/bootstrap/cache/
+storage/
+bootstrap/cache/
+
+# Logs (can be very large)
+**/*.log
+**/storage/logs/
+*.log
+
+# Lock files (large JSON)
+**/composer.lock
+**/package-lock.json
+composer.lock
+package-lock.json
+
+# Images and media
+**/test_*.png
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.webp
+*.ico
+
+# Database
+*.sqlite
+*.db
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large generated files
+*.min.js
+*.min.css
+*.map

@@ -1,0 +1,29 @@
+{
+  "folders": [
+    {
+      "name": "AI Service",
+      "path": "./ai-service"
+    },
+    {
+      "name": "Backend API",
+      "path": "./backend"
+    },
+    {
+      "name": "Frontend Admin",
+      "path": "./frontend-admin"
+    },
+    {
+      "name": "Frontend User",
+      "path": "./frontend-user"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/vendor": true,
+      "**/__pycache__": true,
+      "**/dist": true
+    }
+  }
+}
+

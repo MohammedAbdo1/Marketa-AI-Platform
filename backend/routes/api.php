@@ -19,6 +19,8 @@ use App\Http\Controllers\Api\BrandController;
 use App\Http\Controllers\Api\CampaignController;
 use App\Http\Controllers\Api\CampaignPostController;
 use App\Http\Controllers\Api\PublicController;
+use App\Http\Controllers\Api\Admin\AIDiagnosticsController as AdminAIDiagnosticsController;
+use App\Http\Controllers\Api\AIDiagnosticsController;
 use App\Http\Controllers\Api\UsageController;
 use Illuminate\Support\Facades\Route;
 
@@ -87,12 +89,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Campaigns Management
     Route::apiResource('campaigns', CampaignController::class);
     Route::post('campaigns/preview', [CampaignController::class, 'generatePreview']);
-    Route::post('campaigns/{id}/generate', [CampaignController::class, 'generate']);
-    Route::get('campaigns/{id}/status', [CampaignController::class, 'generationStatus']);
+    Route::post('campaigns/{campaign}/generate', [CampaignController::class, 'generate']);
+    Route::get('campaigns/{campaign}/status', [CampaignController::class, 'generationStatus']);
     Route::post('campaigns/suggest-colors', [CampaignController::class, 'suggestColors']);
-    Route::post('campaigns/{id}/select-plan', [CampaignController::class, 'selectPlan']);
-    Route::get('campaigns/{id}/posts', [CampaignController::class, 'posts']);
-    Route::get('campaigns/{id}/calendar', [CampaignController::class, 'calendar']);
+    Route::post('campaigns/{campaign}/select-plan', [CampaignController::class, 'selectPlan']);
+    Route::get('campaigns/{campaign}/posts', [CampaignController::class, 'posts']);
+    Route::get('campaigns/{campaign}/calendar', [CampaignController::class, 'calendar']);
 
     // Campaign Posts Management
     Route::get('campaign-posts/{id}', [CampaignPostController::class, 'show']);
@@ -103,6 +105,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('campaign-posts/{id}/regenerate', [CampaignPostController::class, 'regenerate']);
     Route::post('campaign-posts/{id}/generate-media', [CampaignPostController::class, 'generateMedia']);
     Route::put('campaign-posts/{id}/schedule', [CampaignPostController::class, 'schedule']);
+
+    // AI Diagnostics (User-facing)
+    Route::post('ai/test-text', [AIDiagnosticsController::class, 'testText'])->name('ai.test-text');
+    Route::post('ai/test-image', [AIDiagnosticsController::class, 'testImage'])->name('ai.test-image');
 });
 
 // ═══════════════════════════════════════════════════════════════════
@@ -183,6 +189,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Testimonials & FAQs
         Route::apiResource('testimonials', AdminTestimonialController::class);
         Route::apiResource('faqs', AdminFaqController::class);
+
+        // AI Diagnostics (Admin only)
+        Route::post('ai/test-text', [AdminAIDiagnosticsController::class, 'testText'])->name('ai.test-text');
+        Route::post('ai/test-image', [AdminAIDiagnosticsController::class, 'testImage'])->name('ai.test-image');
     });
 });
 

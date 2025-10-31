@@ -169,28 +169,55 @@ const generateCampaign = async () => {
       languages: wizardData.value.languages
     })
 
+    // Guard: ensure we have a valid uuid
+    const createdUuid = campaign?.uuid
+    if (!createdUuid) {
+      throw new Error('Failed to determine created campaign uuid')
+    }
+
     // Start generation
-    const response = await campaignStore.generateCampaign(campaign.id)
+    const response = await campaignStore.generateCampaign(createdUuid)
     
+    // If completed immediately (simple mode), navigate without polling
+    if (response?.status === 'completed') {
+      loading.value = false
+      toast.success('Campaign generated successfully!')
+      router.push(`/dashboard/campaigns/${createdUuid}`)
+      return
+    }
+
+    // Fallback: quick status check in case backend completed but response lacked status
+    try {
+      const quickStatus = await campaignStore.fetchGenerationStatus(createdUuid, 1)
+      if (quickStatus?.status === 'completed') {
+        loading.value = false
+        toast.success('Campaign generated successfully!')
+        router.push(`/dashboard/campaigns/${createdUuid}`)
+        return
+      }
+    } catch (_) {
+      // ignore and proceed to polling
+    }
+
     // Set task ID for Socket.IO tracking
-    if (response.task_id) {
+    if (response?.task_id) {
       campaignStore.setCurrentTaskId(response.task_id)
     }
     
     // Start polling for progress (fallback)
-    startProgressPolling(campaign.id)
+    startProgressPolling(createdUuid)
     
     toast.success('Campaign generation started!')
     
   } catch (error) {
-    toast.error(error.message || 'Failed to generate campaign')
+    toast.error(error?.response?.data?.message || error.message || 'Failed to generate campaign')
     loading.value = false
   }
 }
 
-const startProgressPolling = (campaignId) => {
+const startProgressPolling = (campaignUuid) => {
   let pollCount = 0
-  const maxPolls = 30 // Maximum 30 polls (1 minute)
+  const maxPolls = 120 // Up to ~4 minutes to accommodate slower AI
   
   generationInterval.value = setInterval(async () => {
     pollCount++
@@ -203,7 +230,7 @@ const startProgressPolling = (campaignId) => {
     }
     
     try {
-      const status = await campaignStore.fetchGenerationStatus(campaignId, 1) // Only 1 retry per poll
+      const status = await campaignStore.fetchGenerationStatus(campaignUuid, 1) // Only 1 retry per poll
       if (status) {
         generationProgress.value = status.progress
         
@@ -211,7 +238,7 @@ const startProgressPolling = (campaignId) => {
           clearInterval(generationInterval.value)
           loading.value = false
           toast.success('Campaign generated successfully!')
-          router.push(`/dashboard/campaigns/${campaignId}`)
+          router.push(`/dashboard/campaigns/${campaignUuid}`)
         } else if (status.status === 'failed') {
           clearInterval(generationInterval.value)
           loading.value = false

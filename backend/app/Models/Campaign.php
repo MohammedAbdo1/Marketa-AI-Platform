@@ -6,12 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class Campaign extends Model
 {
     use SoftDeletes;
 
     protected $fillable = [
+        'uuid',
         'organization_id',
         'brand_id',
         'name',
@@ -40,6 +42,13 @@ class Campaign extends Model
         'ai_generated_plans',
         'selected_plan_index',
         'status',
+        // Generation state fields
+        'generation_status',
+        'generation_progress',
+        'generation_task_id',
+        'ai_task_id',
+        'generation_started_at',
+        'generation_completed_at',
     ];
 
     protected $casts = [
@@ -55,6 +64,8 @@ class Campaign extends Model
         'start_date' => 'date',
         'end_date' => 'date',
         'paid_ads_budget' => 'decimal:2',
+        'generation_started_at' => 'datetime',
+        'generation_completed_at' => 'datetime',
     ];
 
     /**
@@ -87,5 +98,27 @@ class Campaign extends Model
     public function aiRequests(): HasMany
     {
         return $this->hasMany(AiRequest::class);
+    }
+
+    /**
+     * Auto-generate UUID and bind routes by UUID
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function (Campaign $model) {
+            if (empty($model->uuid)) {
+                $model->uuid = (string) Str::uuid();
+            }
+        });
+    }
+
+    /**
+     * Use uuid for route model binding
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'uuid';
     }
 }

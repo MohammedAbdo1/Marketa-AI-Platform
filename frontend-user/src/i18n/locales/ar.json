@@ -89,6 +89,9 @@
     "settings": "الإعدادات",
     "upgrade": "ترقية الباقة"
   },
+  "labels": {
+    "campaigns": "الحملات"
+  },
   "campaigns": {
     "title": "الحملات",
     "create": "إنشاء حملة",

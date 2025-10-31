@@ -28,7 +28,8 @@ class Settings:
 
     # AI Model Settings
     TEXT_MODEL = "gemini-2.0-flash"
-    IMAGE_MODEL = "stable-diffusion-v3"
+    IMAGE_MODEL = "stable-diffusion-xl-1024-v1-0"
+    IMAGE_BASE_URL = os.getenv("AI_PUBLIC_BASE_URL", "http://localhost:8001")
 
     # Laravel Backend URL
     LARAVEL_BASE_URL = os.getenv("LARAVEL_BASE_URL", "http://localhost:8000/api")
@@ -78,6 +79,27 @@ class Settings:
     # Cache Settings
     CACHE_TTL = int(os.getenv("CACHE_TTL", "3600"))  # 1 hour cache
     CACHE_PREFIX = "marketa_ai:"
+    
+    # Image Composition Settings
+    IMAGE_COMPOSITION_ENABLED = True
+    MAX_IMAGE_LAYERS = 20
+    TEXT_OVERLAY_FONTS_PATH = "app/fonts/"
+    DEFAULT_ARABIC_FONT = "Cairo-Bold.ttf"
+    DEFAULT_ENGLISH_FONT = "Roboto-Bold.ttf"
+    
+    # Storage Configuration - Switch easily between local and S3
+    STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "local")  # "local" or "s3"
+    
+    # Local Storage Settings
+    LOCAL_STORAGE_PATH = os.getenv("LOCAL_STORAGE_PATH", "app/static/images")
+    # IMAGE_BASE_URL already defined above, reuse it
+    
+    # S3 Configuration (only used if STORAGE_BACKEND=s3)
+    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+    AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+    S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
+    CDN_URL = os.getenv("CDN_URL")  # CloudFront or S3 public URL
     
     # WebSocket Settings
     WEBSOCKET_CORS_ORIGINS = ["http://localhost:5173", "http://localhost:8000", "http://localhost:3000", "http://localhost:3001"]

@@ -8,8 +8,8 @@ export const campaignService = {
   },
 
   // Get single campaign
-  async getCampaign(id) {
-    const response = await axios.get(`/campaigns/${id}`)
+  async getCampaign(uuid) {
+    const response = await axios.get(`/campaigns/${uuid}`)
     return response.data
   },
 
@@ -20,14 +20,14 @@ export const campaignService = {
   },
 
   // Update campaign
-  async updateCampaign(id, data) {
-    const response = await axios.put(`/campaigns/${id}`, data)
+  async updateCampaign(uuid, data) {
+    const response = await axios.put(`/campaigns/${uuid}`, data)
     return response.data
   },
 
   // Delete campaign
-  async deleteCampaign(id) {
-    const response = await axios.delete(`/campaigns/${id}`)
+  async deleteCampaign(uuid) {
+    const response = await axios.delete(`/campaigns/${uuid}`)
     return response.data
   },
 
@@ -38,14 +38,14 @@ export const campaignService = {
   },
 
   // Start campaign generation
-  async generateCampaign(id) {
-    const response = await axios.post(`/campaigns/${id}/generate`)
+  async generateCampaign(uuid, data = {}) {
+    const response = await axios.post(`/campaigns/${uuid}/generate`, data)
     return response.data
   },
 
   // Get generation status
-  async getGenerationStatus(id) {
-    const response = await axios.get(`/campaigns/${id}/status`)
+  async getGenerationStatus(uuid) {
+    const response = await axios.get(`/campaigns/${uuid}/status`)
     return response.data
   },
 
@@ -56,14 +56,14 @@ export const campaignService = {
   },
 
   // Get campaign posts
-  async getCampaignPosts(campaignId) {
-    const response = await axios.get(`/campaigns/${campaignId}/posts`)
+  async getCampaignPosts(campaignUuid) {
+    const response = await axios.get(`/campaigns/${campaignUuid}/posts`)
     return response.data
   },
 
   // Get campaign calendar
-  async getCampaignCalendar(campaignId) {
-    const response = await axios.get(`/campaigns/${campaignId}/calendar`)
+  async getCampaignCalendar(campaignUuid) {
+    const response = await axios.get(`/campaigns/${campaignUuid}/calendar`)
     return response.data
   }
 }

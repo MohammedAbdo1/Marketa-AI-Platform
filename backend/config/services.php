@@ -47,6 +47,9 @@ return [
         'retry_attempts' => env('PYTHON_AI_RETRY_ATTEMPTS', 3),
         'websocket_url' => env('PYTHON_AI_WEBSOCKET_URL', 'http://localhost:8001'),
         'health_check_url' => env('PYTHON_AI_HEALTH_URL', 'http://localhost:8001/health'),
+        // Fast path toggle and simple base URL (no queues/polling)
+        'use_simple_ai' => env('USE_SIMPLE_AI', false),
+        'simple_url' => env('PYTHON_AI_SIMPLE_URL', env('PYTHON_AI_URL')),
     ],
 
 ];

@@ -10,56 +10,63 @@ class StabilityAIService:
             raise ValueError("STABILITY_API_KEY not found in environment variables")
         
         self.api_key = settings.STABILITY_API_KEY
-        self.base_url = "https://api.stability.ai/v1"
+        self.base_url_v2 = "https://api.stability.ai/v2beta/stable-image/generate"
         self.headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
+            "authorization": f"Bearer {self.api_key}",
+            "accept": "image/*"
         }
     
     async def generate_image(self, prompt: str, style: str = "photographic", size: str = "1024x1024") -> str:
-        """Generate image using Stability AI"""
+        """Generate image using Stability AI v2beta API"""
         try:
-            # Parse dimensions
+            # Stability SD3 requires English prompts only - translate if needed
+            prompt = self._ensure_english_prompt(prompt)
+            # Map size to aspect ratio for v2beta API
             width, height = map(int, size.split('x'))
+            if width == height:
+                aspect_ratio = "1:1"
+            elif width > height:
+                # Landscape
+                ratio = round(width / height, 1)
+                if ratio >= 1.8:
+                    aspect_ratio = "16:9"
+                else:
+                    aspect_ratio = "3:2"
+            else:
+                # Portrait
+                aspect_ratio = "9:16"
             
-            # Prepare the request
+            # Prepare form data (v2beta uses multipart, not JSON)
             data = {
-                "text_prompts": [
-                    {
-                        "text": prompt,
-                        "weight": 1.0
-                    }
-                ],
-                "cfg_scale": 7,
-                "height": height,
-                "width": width,
-                "samples": 1,
-                "steps": 30,
-                "style_preset": style
+                "prompt": prompt,
+                "output_format": "png",
+                "aspect_ratio": aspect_ratio
             }
             
-            # Make API request
+            # Add style if supported (not all v2 endpoints support style_preset)
+            # For sd3, we embed style in prompt instead
+            
+            # Make API request to v2beta SD3 endpoint
             response = requests.post(
-                f"{self.base_url}/generation/{settings.IMAGE_MODEL}/text-to-image",
+                f"{self.base_url_v2}/sd3",
                 headers=self.headers,
-                json=data,
+                files={"none": ""},  # Required empty file for multipart
+                data=data,
                 timeout=60
             )
             
             if response.status_code != 200:
                 raise Exception(f"Stability AI API error: {response.status_code} - {response.text}")
             
-            # Parse response
-            result = response.json()
+            # v2beta returns raw image bytes directly
+            image_bytes = response.content
             
-            if "artifacts" not in result or not result["artifacts"]:
+            if not image_bytes:
                 raise Exception("No image generated")
             
-            # Get base64 image data
-            image_data = result["artifacts"][0]["base64"]
+            # Convert to base64 for compatibility
+            image_data = base64.b64encode(image_bytes).decode('utf-8')
             
-            # For now, return the base64 data
-            # In production, you'd save this to a file storage service
             return f"data:image/png;base64,{image_data}"
         
         except Exception as e:
@@ -181,3 +188,48 @@ class StabilityAIService:
         
         except Exception as e:
             raise Exception(f"Batch image generation failed: {str(e)}")
+    
+    def _ensure_english_prompt(self, prompt: str) -> str:
+        """Convert Arabic/mixed prompts to English for Stability compatibility"""
+        import re
+        # Quick check: if prompt has Arabic chars, translate via simple rules or keep English parts
+        has_arabic = bool(re.search(r'[\u0600-\u06FF]', prompt))
+        if not has_arabic:
+            return prompt
+        
+        # Simple translation mapping for common terms (fast, no API call)
+        translations = {
+            'رجل': 'man',
+            'بنت': 'woman',
+            'امرأة': 'woman',
+            'شاشة': 'screen',
+            'كمبيوتر': 'computer',
+            'واجهه': 'interface',
+            'واجهة': 'interface',
+            'نظام': 'system',
+            'الخياطة': 'tailoring',
+            'erp': 'ERP',
+            'صورة': 'image',
+            'تحت': 'bottom',
+            'أحمر': 'red',
+            'في الوسط': 'in the center',
+            'احترافي': 'professional',
+            'عالي الجودة': 'high quality',
+        }
+        
+        # Replace Arabic terms with English
+        english_prompt = prompt
+        for ar, en in translations.items():
+            english_prompt = re.sub(ar, en, english_prompt, flags=re.IGNORECASE)
+        
+        # Remove remaining Arabic chars (likely connecting words)
+        english_prompt = re.sub(r'[\u0600-\u06FF]+', ' ', english_prompt)
+        
+        # Clean up extra spaces
+        english_prompt = re.sub(r'\s+', ' ', english_prompt).strip()
+        
+        # If result is too short, use a generic fallback
+        if len(english_prompt) < 10:
+            english_prompt = "Professional marketing image, high quality, commercial photography"
+        
+        return english_prompt

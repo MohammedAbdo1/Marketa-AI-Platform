@@ -1,10 +1,22 @@
 import google.generativeai as genai
 from config import settings
 from app.services.cache_service import cache_service
+from app.services.stability import StabilityAIService
 import asyncio
+import os
+import uuid
+import base64
+import logging
 
 class ImageGeneratorAgent:
     def __init__(self):
+        self.stability = None
+        if settings.STABILITY_API_KEY:
+            try:
+                self.stability = StabilityAIService()
+            except Exception:
+                self.stability = None
+        self.logger = logging.getLogger("uvicorn.error")
         if settings.GOOGLE_API_KEY:
             genai.configure(api_key=settings.GOOGLE_API_KEY)
             self.model = genai.GenerativeModel(
@@ -18,10 +30,30 @@ class ImageGeneratorAgent:
         else:
             self.model = None
     
-    async def generate_image(self, prompt):
+    async def generate_image(self, prompt, size: str = "1024x1024"):
         """Generate image for a post"""
+        # Prefer Stability if key is available
+        if self.stability:
+            try:
+                self.logger.info({"stage": "py_image_provider_start", "provider": "stability", "size": size})
+                data_url = await self.stability.generate_image(prompt, style=settings.IMAGE_GEN_STYLE, size=size)
+                # data:image/png;base64,.... -> save to static and return URL
+                header, b64 = data_url.split(",", 1)
+                image_bytes = base64.b64decode(b64)
+                images_dir = os.path.join("app", "static", "images")
+                os.makedirs(images_dir, exist_ok=True)
+                filename = f"{uuid.uuid4().hex}.png"
+                filepath = os.path.join(images_dir, filename)
+                with open(filepath, "wb") as f:
+                    f.write(image_bytes)
+                self.logger.info({"stage": "py_image_provider_saved", "provider": "stability", "path": filepath})
+                return f"{settings.IMAGE_BASE_URL}/static/images/{filename}"
+            except Exception as e:
+                self.logger.exception({"stage": "py_image_provider_error", "provider": "stability", "error": str(e)})
+                raise RuntimeError(f"Stability error: {str(e)}")
+
         if not self.model:
-            return "https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=Image+Not+Available"
+            raise RuntimeError("No image provider available")
         
         # Create cache key from prompt
         cache_key = f"image:{hash(prompt)}"
@@ -37,29 +69,16 @@ class ImageGeneratorAgent:
                 asyncio.sleep(0.1),  # Simulate processing time
                 timeout=settings.AI_REQUEST_TIMEOUT
             )
-            
-            # For now, return a placeholder
-            # In production, this would integrate with DALL-E or Stability AI
-            result = "https://via.placeholder.com/400x400/4ECDC4/FFFFFF?text=AI+Generated"
-            
-            # Cache the result
-            cache_service.set_cached_ai_result(cache_key, result, "image", settings.CACHE_TTL)
-            
-            return result
+            raise RuntimeError("Text model image generation not implemented")
         except asyncio.TimeoutError:
-            return "https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=Timeout+Error"
+            raise RuntimeError("Image provider timeout")
         except Exception as e:
-            return f"https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=Error+{str(e)[:20]}"
+            raise
     
     async def generate_image_for_post(self, post_data):
         """Generate image based on post content"""
         if not self.model:
-            return {
-                "image_url": "https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=Image+Not+Available",
-                "image_prompt": "Placeholder image",
-                "cost": 0.0,
-                "tokens": 0
-            }
+            raise RuntimeError("No image provider available for post")
         
         # Create cache key from post data
         cache_key = f"image_post:{hash(str(post_data))}"
@@ -79,28 +98,8 @@ class ImageGeneratorAgent:
             # Generate image prompt based on post content
             image_prompt = f"Marketing image for: {post_data.get('content_ar', 'Post content')}"
             
-            result = {
-                "image_url": "https://via.placeholder.com/400x400/4ECDC4/FFFFFF?text=AI+Generated",
-                "image_prompt": image_prompt,
-                "cost": 0.1,
-                "tokens": 50
-            }
-            
-            # Cache the result
-            cache_service.set_cached_ai_result(cache_key, result, "image_post", settings.CACHE_TTL)
-            
-            return result
+            raise RuntimeError("Text model image generation not implemented")
         except asyncio.TimeoutError:
-            return {
-                "image_url": "https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=Timeout+Error",
-                "image_prompt": "Timeout error",
-                "cost": 0.0,
-                "tokens": 0
-            }
+            raise RuntimeError("Image provider timeout")
         except Exception as e:
-            return {
-                "image_url": f"https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=Error+{str(e)[:20]}",
-                "image_prompt": f"Error: {str(e)}",
-                "cost": 0.0,
-                "tokens": 0
-            }
+            raise

@@ -113,7 +113,7 @@ const router = createRouter({
         {
           path: 'campaigns',
           name: 'campaigns',
-          component: () => import('../views/dashboard/campaigns/CampaignList.vue'),
+          component: () => import('../views/dashboard/campaigns/Campaigns.vue'),
         },
         {
           path: 'campaigns/wizard',
@@ -126,7 +126,7 @@ const router = createRouter({
           component: () => import('../views/dashboard/campaigns/CampaignWizard.vue'),
         },
         {
-          path: 'campaigns/:id',
+          path: 'campaigns/:uuid',
           name: 'campaigns.show',
           component: () => import('../views/dashboard/campaigns/CampaignDetails.vue'),
         },

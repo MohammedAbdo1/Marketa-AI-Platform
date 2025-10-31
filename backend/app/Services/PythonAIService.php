@@ -5,17 +5,53 @@ namespace App\Services;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Exception;
 
 class PythonAIService
 {
     protected $baseUrl;
     protected $timeout;
+    protected $useSimple;
+    protected $simpleUrl;
 
     public function __construct()
     {
         $this->baseUrl = config('services.python_ai.url', 'http://api:8001/api');
         $this->timeout = config('services.python_ai.timeout', 180);  // 180 seconds for Google API calls
+        $this->useSimple = (bool) config('services.python_ai.use_simple_ai', false);
+        $this->simpleUrl = config('services.python_ai.simple_url', $this->baseUrl);
+    }
+
+    protected function getBaseUrl(): string
+    {
+        return $this->useSimple ? $this->simpleUrl : $this->baseUrl;
+    }
+
+    /**
+     * Diagnostics: improve text (simple echo/paraphrase) to verify connectivity
+     */
+    public function testTextImprove(string $text): array
+    {
+        $base = $this->getBaseUrl();
+        $response = Http::timeout(30)->post("{$base}/test/text", ['text' => $text]);
+        if (!$response->successful()) {
+            throw new Exception("AI Service text test error (HTTP {$response->status()}): " . $response->body());
+        }
+        return $response->json();
+    }
+
+    /**
+     * Diagnostics: generate test image URL based on prompt
+     */
+    public function testGenerateImage(string $prompt): array
+    {
+        $base = $this->getBaseUrl();
+        $response = Http::timeout(60)->post("{$base}/test/image", ['prompt' => $prompt]);
+        if (!$response->successful()) {
+            throw new Exception("AI Service image test error (HTTP {$response->status()}): " . $response->body());
+        }
+        return $response->json();
     }
 
     /**
@@ -27,12 +63,14 @@ class PythonAIService
             // Get user ID from auth if available
             $userId = Auth::check() ? Auth::id() : request()->ip() . '_anonymous';
             
-            // Start preview generation task
+            // Start preview generation task (direct if USE_SIMPLE_AI is enabled)
+            $base = $this->getBaseUrl();
+            
             $response = Http::timeout($this->timeout)
                 ->withHeaders([
                     'X-User-ID' => (string) $userId
                 ])
-                ->post("{$this->baseUrl}/campaign/preview", $data);
+                ->post("{$base}/campaign/preview", $data);
 
             if (!$response->successful()) {
                 $errorBody = $response->body();
@@ -51,6 +89,11 @@ class PythonAIService
             }
 
             $taskResponse = $response->json();
+
+            // If simple mode is ON, the response is the final preview - return immediately
+            if ($this->useSimple && !isset($taskResponse['task_id'])) {
+                return $taskResponse;
+            }
             
             // If response contains task_id, wait for result
             if (isset($taskResponse['task_id'])) {
@@ -76,7 +119,7 @@ class PythonAIService
                         ->withHeaders([
                             'X-User-ID' => (string) $userId
                         ])
-                        ->get("{$this->baseUrl}/task/status/{$taskId}");
+                        ->get("{$base}/task/status/{$taskId}");
                     
                     if (!$statusResponse->successful()) {
                         throw new Exception("Failed to check task status: " . $statusResponse->body());
@@ -90,7 +133,7 @@ class PythonAIService
                             ->withHeaders([
                                 'X-User-ID' => (string) $userId
                             ])
-                            ->get("{$this->baseUrl}/task/result/{$taskId}");
+                            ->get("{$base}/task/result/{$taskId}");
                         
                         if (!$resultResponse->successful()) {
                             throw new Exception("Failed to get task result: " . $resultResponse->body());
@@ -124,6 +167,30 @@ class PythonAIService
     }
 
     /**
+     * Generate full campaign inline (no queues) when USE_SIMPLE_AI is enabled
+     */
+    public function generateCampaignInline(array $data): array
+    {
+        try {
+            $userId = Auth::check() ? Auth::id() : request()->ip() . '_anonymous';
+            $base = $this->getBaseUrl();
+
+            $response = Http::timeout($this->timeout)
+                ->withHeaders(['X-User-ID' => (string) $userId])
+                ->post("{$base}/campaign/generate", $data);
+
+            if (!$response->successful()) {
+                throw new Exception("AI Service error (HTTP {$response->status()}): " . $response->body());
+            }
+
+            return $response->json();
+        } catch (Exception $e) {
+            Log::error('Inline campaign generation failed', ['error' => $e->getMessage(), 'data' => $data]);
+            throw $e;
+        }
+    }
+
+    /**
      * Generate full campaign with posts (async)
      */
     public function generateCampaignAsync(array $data): array
@@ -131,24 +198,36 @@ class PythonAIService
         try {
             // Get user ID from auth if available
             $userId = Auth::check() ? Auth::id() : request()->ip() . '_anonymous';
+            $requestId = request()->header('X-Request-ID', (string) Str::uuid());
+            $base = $this->getBaseUrl();
             
             Log::info("Calling AI service for campaign generation", [
-                'url' => "{$this->baseUrl}/campaign/generate",
+                'url' => "{$base}/campaign/generate",
                 'user_id' => $userId,
-                'campaign_id' => $data['campaign_id'] ?? null
+                'campaign_id' => $data['campaign_id'] ?? null,
+                'request_id' => $requestId
             ]);
             
             $response = Http::timeout($this->timeout)
                 ->withHeaders([
-                    'X-User-ID' => (string) $userId
+                    'X-User-ID' => (string) $userId,
+                    'X-Request-ID' => (string) $requestId
                 ])
-                ->post("{$this->baseUrl}/campaign/generate", $data);
+                ->post("{$base}/campaign/generate", $data);
 
             if ($response->successful()) {
                 $result = $response->json();
                 Log::info("AI service campaign generation response", [
+                    'stage' => 'response',
                     'campaign_id' => $data['campaign_id'] ?? null,
-                    'task_id' => $result['task_id'] ?? null
+                    'task_id' => $result['task_id'] ?? null,
+                    'request_id' => $requestId,
+                    'status' => $response->status()
+                ]);
+                Log::info("AI service campaign generation parsed", [
+                    'stage' => 'parsed',
+                    'keys' => array_keys((array) $result),
+                    'request_id' => $requestId
                 ]);
                 return $result;
             }
@@ -157,25 +236,41 @@ class PythonAIService
             $statusCode = $response->status();
             
             Log::error("AI Service campaign generation failed", [
+                'stage' => 'ai_response',
                 'status_code' => $statusCode,
                 'error_body' => $errorBody,
                 'campaign_id' => $data['campaign_id'] ?? null,
-                'url' => "{$this->baseUrl}/campaign/generate"
+                'url' => "{$base}/campaign/generate",
+                'request_id' => $requestId
             ]);
 
-            throw new Exception("AI Service error (HTTP {$statusCode}): " . $errorBody);
+            throw new Exception(json_encode([
+                'stage' => 'ai_response',
+                'message' => "AI Service error (HTTP {$statusCode})",
+                'details' => $errorBody,
+                'request_id' => $requestId
+            ]));
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
             Log::error("AI Service connection failed", [
+                'stage' => 'connection',
                 'error' => $e->getMessage(),
-                'base_url' => $this->baseUrl,
-                'campaign_id' => $data['campaign_id'] ?? null
+                'base_url' => $base,
+                'campaign_id' => $data['campaign_id'] ?? null,
+                'request_id' => $requestId
             ]);
-            throw new Exception("Failed to connect to AI service: " . $e->getMessage());
+            throw new Exception(json_encode([
+                'stage' => 'connection',
+                'message' => 'Failed to connect to AI service',
+                'details' => $e->getMessage(),
+                'request_id' => $requestId
+            ]));
         } catch (Exception $e) {
             Log::error("Campaign generation failed", [
+                'stage' => 'error',
                 'error' => $e->getMessage(),
                 'error_type' => get_class($e),
-                'data' => $data
+                'data' => $data,
+                'request_id' => isset($requestId) ? $requestId : null
             ]);
             throw $e;
         }
@@ -186,6 +281,9 @@ class PythonAIService
      */
     public function generateCampaign(array $data): array
     {
+        if ($this->useSimple) {
+            return $this->generateCampaignInline($data);
+        }
         return $this->generateCampaignAsync($data);
     }
 

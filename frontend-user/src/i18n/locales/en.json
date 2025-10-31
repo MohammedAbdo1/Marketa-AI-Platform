@@ -89,6 +89,9 @@
     "settings": "Settings",
     "upgrade": "Upgrade Plan"
   },
+  "labels": {
+    "campaigns": "Campaigns"
+  },
   "campaigns": {
     "title": "Campaigns",
     "create": "Create Campaign",

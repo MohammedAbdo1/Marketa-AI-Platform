@@ -1,8 +1,11 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from starlette.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import sys
 import os
+import time
+import logging
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import settings
@@ -18,6 +21,12 @@ app = FastAPI(
     description="AI-powered campaign generation service (without Redis)",
     version="1.0.0"
 )
+# Serve static files (generated images)
+try:
+    os.makedirs(os.path.join("app", "static"), exist_ok=True)
+except Exception:
+    pass
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # CORS middleware
 app.add_middleware(
@@ -32,6 +41,8 @@ app.add_middleware(
 planner_agent = None
 writer_agent = None
 image_agent = None
+
+logger = logging.getLogger("uvicorn.error")
 
 def get_planner_agent():
     global planner_agent
@@ -65,20 +76,28 @@ async def health_check():
     }
 
 @app.post("/api/campaign/preview")
-async def generate_campaign_preview(request: CampaignPreviewRequest):
+async def generate_campaign_preview(request: CampaignPreviewRequest, raw: Request):
     """Generate campaign structure preview"""
     try:
+        rid = raw.headers.get("X-Request-ID", "-")
+        t0 = time.time()
+        logger.info({"stage": "py_received", "rid": rid, "endpoint": "/api/campaign/preview", "campaign_id": getattr(request, 'campaign_id', None)})
         planner = get_planner_agent()
         preview = await planner.generate_preview(request)
+        logger.info({"stage": "py_done", "rid": rid, "elapsed": round(time.time() - t0, 3)})
         return CampaignPreviewResponse(**preview)
     
     except Exception as e:
+        logger.exception({"stage": "py_error", "rid": rid, "error": str(e)})
         raise HTTPException(status_code=500, detail=f"Preview generation failed: {str(e)}")
 
 @app.post("/api/campaign/generate")
-async def generate_campaign(request: CampaignPreviewRequest):
+async def generate_campaign(request: CampaignPreviewRequest, raw: Request):
     """Generate complete campaign"""
     try:
+        rid = raw.headers.get("X-Request-ID", "-")
+        t0 = time.time()
+        logger.info({"stage": "py_received", "rid": rid, "endpoint": "/api/campaign/generate", "campaign_id": getattr(request, 'campaign_id', None)})
         planner = get_planner_agent()
         writer = get_writer_agent()
         image_agent = get_image_agent()
@@ -89,51 +108,108 @@ async def generate_campaign(request: CampaignPreviewRequest):
         # Generate posts
         posts = await writer.generate_posts(structure, request)
         
-        # Generate images for posts
-        for post in posts:
-            if hasattr(post, 'needs_image') and post.needs_image:
-                image_url = await image_agent.generate_image(post.image_prompt)
-                post.image_url = image_url
+        # Generate images for posts with resilient fallback when provider fails or has no credits
+        for idx, post in enumerate(posts):
+            # Support object-like and dict-like posts
+            needs_image = False
+            image_prompt = None
+            platform = None
+            if hasattr(post, 'needs_image'):
+                needs_image = bool(getattr(post, 'needs_image'))
+                image_prompt = getattr(post, 'image_prompt', None)
+                platform = getattr(post, 'platform', None)
+            elif isinstance(post, dict):
+                needs_image = bool(post.get('needs_image'))
+                image_prompt = post.get('image_prompt')
+                platform = post.get('platform')
+
+            if needs_image:
+                # Decide size by platform (must be increments of 64 for Stability)
+                size_map = {
+                    'instagram': '1024x1024',  # Square for IG
+                    'facebook': '1216x640',    # ~1.9:1 ratio for FB
+                    'linkedin': '1216x640',    # ~1.9:1 ratio for LinkedIn
+                    'twitter': '1216x640',     # ~1.9:1 ratio for Twitter
+                }
+                size = size_map.get(str(platform or '').lower(), '1024x1024')
+                logger.info({"stage": "py_image_request_sent", "rid": rid, "idx": idx, "platform": platform, "size": size, "prompt": (image_prompt or '')[:120]})
+                try:
+                    image_url = await image_agent.generate_image(
+                        image_prompt or f"High quality social media image for {getattr(request,'product_name','product')} on {platform}",
+                        size
+                    )
+                    if not image_url:
+                        raise ValueError('Empty image_url from provider')
+                    logger.info({"stage": "py_image_provider_done", "rid": rid, "idx": idx, "platform": platform, "url": image_url})
+                except Exception as e:
+                    logger.exception({"stage": "py_image_error", "rid": rid, "idx": idx, "platform": platform, "error": str(e), "repr": repr(e)})
+                    # Temporary fallback when Stability is down (520 errors)
+                    seed = f"{getattr(request, 'product_name', 'marketa')}-{idx}"
+                    w, h = (size.split('x') if 'x' in size else ['1024','1024'])
+                    image_url = f"https://picsum.photos/seed/{seed}/{w}/{h}"
+                    logger.warning({"stage": "py_image_fallback_stability_down", "rid": rid, "idx": idx, "platform": platform, "url": image_url})
+
+                if hasattr(post, 'image_url'):
+                    post.image_url = image_url
+                elif isinstance(post, dict):
+                    post['image_url'] = image_url
         
-        return {
+        resp = {
             "campaign_id": request.campaign_id,
             "structure": structure,
             "posts": [post.dict() if hasattr(post, 'dict') else post for post in posts],
             "status": "completed"
         }
+        logger.info({"stage": "py_done", "rid": rid, "elapsed": round(time.time() - t0, 3)})
+        return resp
     
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Campaign generation failed: {str(e)}")
+        import traceback
+        tb = traceback.format_exc()
+        logger.error({"stage": "py_error", "rid": rid, "error": str(e), "type": type(e).__name__, "traceback": tb})
+        raise HTTPException(status_code=500, detail=f"Campaign generation failed: {type(e).__name__}: {str(e)}")
 
 @app.post("/api/post/regenerate-text")
-async def regenerate_post_text(request: PostGenerationRequest):
+async def regenerate_post_text(request: PostGenerationRequest, raw: Request):
     """Regenerate text for a specific post"""
     try:
+        rid = raw.headers.get("X-Request-ID", "-")
+        t0 = time.time()
+        logger.info({"stage": "py_received", "rid": rid, "endpoint": "/api/post/regenerate-text", "post_id": request.post_id})
         writer = get_writer_agent()
         new_text = await writer.regenerate_post_text(request)
-        return PostGenerationResponse(
+        resp = PostGenerationResponse(
             post_id=request.post_id,
             content_ar=new_text.get("content_ar"),
             content_en=new_text.get("content_en"),
             status="completed"
         )
+        logger.info({"stage": "py_done", "rid": rid, "elapsed": round(time.time() - t0, 3)})
+        return resp
     
     except Exception as e:
+        logger.exception({"stage": "py_error", "rid": rid, "error": str(e)})
         raise HTTPException(status_code=500, detail=f"Text regeneration failed: {str(e)}")
 
 @app.post("/api/post/regenerate-image")
-async def regenerate_post_image(request: PostGenerationRequest):
+async def regenerate_post_image(request: PostGenerationRequest, raw: Request):
     """Regenerate image for a specific post"""
     try:
+        rid = raw.headers.get("X-Request-ID", "-")
+        t0 = time.time()
+        logger.info({"stage": "py_received", "rid": rid, "endpoint": "/api/post/regenerate-image", "post_id": request.post_id})
         image_agent = get_image_agent()
         new_image_url = await image_agent.generate_image(request.image_prompt)
-        return PostGenerationResponse(
+        resp = PostGenerationResponse(
             post_id=request.post_id,
             image_url=new_image_url,
             status="completed"
         )
+        logger.info({"stage": "py_done", "rid": rid, "elapsed": round(time.time() - t0, 3)})
+        return resp
     
     except Exception as e:
+        logger.exception({"stage": "py_error", "rid": rid, "error": str(e)})
         raise HTTPException(status_code=500, detail=f"Image regeneration failed: {str(e)}")
 
 @app.post("/api/brand/suggest-colors")
@@ -146,6 +222,56 @@ async def suggest_brand_colors(request: dict):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Color suggestion failed: {str(e)}")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Diagnostics endpoints (simple connectivity checks)
+# ─────────────────────────────────────────────────────────────────────────────
+@app.post("/api/test/text")
+async def test_text(request: dict, raw: Request):
+    """Echo/improve text to verify connectivity."""
+    try:
+        rid = raw.headers.get("X-Request-ID", "-")
+        t0 = time.time()
+        logger.info({"stage": "py_received", "rid": rid, "endpoint": "/api/test/text"})
+        text = request.get("text", "").strip()
+        if not text:
+            raise HTTPException(status_code=422, detail="'text' is required")
+
+        writer = get_writer_agent()
+        # If writer has a simple improve method, use it; otherwise return a basic transformation
+        if hasattr(writer, "improve_text"):
+            improved = await writer.improve_text(text)
+        else:
+            improved = f"محسّن: {text}"
+
+        resp = {"input": text, "improved": improved, "ok": True}
+        logger.info({"stage": "py_done", "rid": rid, "elapsed": round(time.time() - t0, 3)})
+        return resp
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception({"stage": "py_error", "rid": rid, "error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Text test failed: {str(e)}")
+
+@app.post("/api/test/image")
+async def test_image(request: dict, raw: Request):
+    """Generate a test image URL to verify connectivity."""
+    try:
+        rid = raw.headers.get("X-Request-ID", "-")
+        t0 = time.time()
+        logger.info({"stage": "py_received", "rid": rid, "endpoint": "/api/test/image"})
+        prompt = request.get("prompt", "").strip() or "abstract colorful gradient background"
+        image_agent = get_image_agent()
+        if hasattr(image_agent, "generate_image"):
+            url = await image_agent.generate_image(prompt)
+        else:
+            url = "https://picsum.photos/seed/marketa/512/512"
+        resp = {"prompt": prompt, "image_url": url, "ok": True}
+        logger.info({"stage": "py_done", "rid": rid, "elapsed": round(time.time() - t0, 3)})
+        return resp
+    except Exception as e:
+        logger.exception({"stage": "py_error", "rid": rid, "error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Image test failed: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run(

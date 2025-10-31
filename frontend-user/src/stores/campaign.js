@@ -19,6 +19,10 @@ export const useCampaignStore = defineStore('campaign', {
       return state.campaigns.find(campaign => campaign.id === id)
     },
 
+    getCampaignByUuid: (state) => (uuid) => {
+      return state.campaigns.find(campaign => campaign.uuid === uuid)
+    },
+
     getCampaignsByStatus: (state) => (status) => {
       return state.campaigns.filter(campaign => campaign.generation_status === status)
     },
@@ -51,12 +55,12 @@ export const useCampaignStore = defineStore('campaign', {
     },
 
     // Fetch single campaign
-    async fetchCampaign(id) {
+    async fetchCampaign(uuid) {
       this.loading = true
       this.error = null
       
       try {
-        const response = await campaignService.getCampaign(id)
+        const response = await campaignService.getCampaign(uuid)
         this.currentCampaign = response.data
         return response.data
       } catch (error) {
@@ -85,17 +89,17 @@ export const useCampaignStore = defineStore('campaign', {
     },
 
     // Update campaign
-    async updateCampaign(id, data) {
+    async updateCampaign(uuid, data) {
       this.loading = true
       this.error = null
       
       try {
-        const response = await campaignService.updateCampaign(id, data)
-        const index = this.campaigns.findIndex(campaign => campaign.id === id)
+        const response = await campaignService.updateCampaign(uuid, data)
+        const index = this.campaigns.findIndex(campaign => campaign.uuid === uuid)
         if (index !== -1) {
           this.campaigns[index] = response.data
         }
-        if (this.currentCampaign?.id === id) {
+        if (this.currentCampaign?.uuid === uuid) {
           this.currentCampaign = response.data
         }
         return response.data
@@ -108,14 +112,14 @@ export const useCampaignStore = defineStore('campaign', {
     },
 
     // Delete campaign
-    async deleteCampaign(id) {
+    async deleteCampaign(uuid) {
       this.loading = true
       this.error = null
       
       try {
-        await campaignService.deleteCampaign(id)
-        this.campaigns = this.campaigns.filter(campaign => campaign.id !== id)
-        if (this.currentCampaign?.id === id) {
+        await campaignService.deleteCampaign(uuid)
+        this.campaigns = this.campaigns.filter(campaign => campaign.uuid !== uuid)
+        if (this.currentCampaign?.uuid === uuid) {
           this.currentCampaign = null
         }
       } catch (error) {
@@ -144,14 +148,20 @@ export const useCampaignStore = defineStore('campaign', {
     },
 
     // Start campaign generation
-    async generateCampaign(id) {
+    async generateCampaign(uuid) {
       this.loading = true
       this.error = null
       
       try {
-        const response = await campaignService.generateCampaign(id)
+        const response = await campaignService.generateCampaign(uuid)
+        const payload = response?.data || response
+        // If simple mode returns completed immediately, reflect it and return
+        if (payload?.status === 'completed') {
+          this.generationStatus = { status: 'completed', progress: 100 }
+          return payload
+        }
         this.generationStatus = { status: 'generating', progress: 0 }
-        return response.data
+        return payload
       } catch (error) {
         this.error = error.response?.data?.message || 'Failed to start generation'
         throw error
@@ -161,14 +171,22 @@ export const useCampaignStore = defineStore('campaign', {
     },
 
     // Get generation status with timeout and retry limit
-    async fetchGenerationStatus(id, maxRetries = 3) {
+    async fetchGenerationStatus(uuid, maxRetries = 3) {
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          const response = await campaignService.getGenerationStatus(id)
+          const response = await campaignService.getGenerationStatus(uuid)
           this.generationStatus = response.data
           return response.data
         } catch (error) {
           console.error(`Failed to fetch generation status (attempt ${attempt}/${maxRetries}):`, error)
+
+          // Stop immediately on 404 or explicit not-exists messages
+          const statusCode = error.response?.status
+          const message = error.response?.data?.message || error.message || ''
+          if (statusCode === 404 || /does not exist/i.test(message) || /does not exists/i.test(message)) {
+            this.generationStatus = { status: 'failed', progress: 0 }
+            throw error
+          }
           
           if (attempt === maxRetries) {
             // Stop polling after max retries

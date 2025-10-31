@@ -559,4 +559,87 @@ class PythonAIService
             return ['status' => 'error', 'error' => $e->getMessage()];
         }
     }
+    
+    /**
+     * Analyze image description for composition
+     */
+    public function analyzeImageDescription(string $description, string $platform = 'instagram', string $businessType = ''): array
+    {
+        try {
+            $base = $this->getBaseUrl();
+            $response = Http::timeout($this->timeout)
+                ->post("{$base}/post/analyze-description", [
+                    'description' => $description,
+                    'platform' => $platform,
+                    'business_type' => $businessType
+                ]);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            throw new Exception("Analysis failed: " . $response->body());
+        } catch (Exception $e) {
+            Log::error("Image description analysis failed", [
+                'error' => $e->getMessage(),
+                'description' => $description
+            ]);
+            throw $e;
+        }
+    }
+    
+    /**
+     * Generate composed image with text overlays
+     */
+    public function generateComposedImage(array $analysisData, string $size = '1024x1024'): array
+    {
+        try {
+            $base = $this->getBaseUrl();
+            $response = Http::timeout($this->timeout)
+                ->post("{$base}/post/generate-composed", [
+                    'analysis' => $analysisData,
+                    'size' => $size
+                ]);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            throw new Exception("Composed image generation failed: " . $response->body());
+        } catch (Exception $e) {
+            Log::error("Composed image generation failed", [
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
+    }
+    
+    /**
+     * Regenerate specific layer of a post
+     */
+    public function regenerateLayer(int $postId, int $layerIndex, array $changes): array
+    {
+        try {
+            $base = $this->getBaseUrl();
+            $response = Http::timeout($this->timeout)
+                ->post("{$base}/post/regenerate-layer", [
+                    'post_id' => $postId,
+                    'layer_index' => $layerIndex,
+                    'changes' => $changes
+                ]);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            throw new Exception("Layer regeneration failed: " . $response->body());
+        } catch (Exception $e) {
+            Log::error("Layer regeneration failed", [
+                'error' => $e->getMessage(),
+                'post_id' => $postId,
+                'layer_index' => $layerIndex
+            ]);
+            throw $e;
+        }
+    }
 }

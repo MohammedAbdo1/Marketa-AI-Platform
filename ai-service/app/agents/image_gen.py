@@ -2,11 +2,14 @@ import google.generativeai as genai
 from config import settings
 from app.services.cache_service import cache_service
 from app.services.stability import StabilityAIService
+from app.services.image_compositor import ImageCompositor
+from app.services.storage import storage
 import asyncio
 import os
 import uuid
 import base64
 import logging
+import requests
 
 class ImageGeneratorAgent:
     def __init__(self):
@@ -17,6 +20,12 @@ class ImageGeneratorAgent:
             except Exception:
                 self.stability = None
         self.logger = logging.getLogger("uvicorn.error")
+        self.compositor = None
+        if settings.IMAGE_COMPOSITION_ENABLED:
+            try:
+                self.compositor = ImageCompositor()
+            except Exception as e:
+                self.logger.warning(f"Compositor initialization failed: {e}")
         if settings.GOOGLE_API_KEY:
             genai.configure(api_key=settings.GOOGLE_API_KEY)
             self.model = genai.GenerativeModel(
@@ -103,3 +112,73 @@ class ImageGeneratorAgent:
             raise RuntimeError("Image provider timeout")
         except Exception as e:
             raise
+    
+    async def generate_composed_image(self, analysis: dict, size: str = "1024x1024"):
+        """
+        Generate composed image with text overlays and elements
+        
+        Args:
+            analysis: Analysis from CompositionAnalyzerAgent with:
+                - scene_description: Base scene to generate
+                - text_overlays: Text to add on image
+                - screen_content: Content for screens
+                - image_style: Style preferences
+            size: Image size
+            
+        Returns:
+            dict with:
+                - final_image_url: URL to final composed image
+                - layers: JSON structure for editing
+                - base_image_url: URL to base image (without text)
+        """
+        if not self.stability:
+            raise RuntimeError("Stability AI not configured for composition")
+        
+        if not self.compositor:
+            raise RuntimeError("ImageCompositor not initialized")
+        
+        self.logger.info("[ImageGen] Starting composed image generation")
+        
+        # Step 1: Generate base scene WITHOUT text
+        scene_prompt = analysis.get("scene_description", "")
+        image_style = analysis.get("image_style", "professional, high quality")
+        
+        # Build clean prompt without text mentions
+        base_prompt = f"{scene_prompt}. {image_style}. Professional photography, high quality, no text, no captions."
+        
+        self.logger.info(f"[ImageGen] Base prompt: {base_prompt[:100]}")
+        
+        # Generate base image from Stability
+        data_url = await self.stability.generate_image(base_prompt, style=settings.IMAGE_GEN_STYLE, size=size)
+        
+        # Extract image bytes
+        header, b64 = data_url.split(",", 1)
+        base_image_bytes = base64.b64decode(b64)
+        
+        self.logger.info(f"[ImageGen] Base image generated: {len(base_image_bytes)} bytes")
+        
+        # Step 2: Apply composition (text overlays, etc.)
+        composed_result = await self.compositor.compose_image(analysis, base_image_bytes)
+        
+        self.logger.info(f"[ImageGen] Composition complete")
+        
+        # Step 3: Save final composed image to storage
+        final_filename = f"composed_{uuid.uuid4().hex}.png"
+        final_url = await storage.save_image(
+            composed_result.final_image,
+            final_filename,
+            "image/png"
+        )
+        
+        self.logger.info(f"[ImageGen] Final image saved: {final_url}")
+        
+        # Return result
+        return {
+            "final_image_url": final_url,
+            "layers": composed_result.to_json(),
+            "base_image_url": composed_result.base_image_url,
+            "dimensions": {
+                "width": composed_result.dimensions[0],
+                "height": composed_result.dimensions[1]
+            }
+        }

@@ -21,7 +21,17 @@ WORKDIR /app
 COPY requirements.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install in stages to avoid timeout on large packages
+RUN pip install --no-cache-dir --timeout=300 fastapi==0.104.1 uvicorn[standard]==0.24.0 pydantic==2.5.0 python-dotenv==1.0.0
+RUN pip install --no-cache-dir --timeout=300 google-generativeai==0.3.2 openai>=1.6.1 requests==2.31.0 httpx==0.25.2
+RUN pip install --no-cache-dir --timeout=300 python-multipart==0.0.6 pillow==10.1.0
+RUN pip install --no-cache-dir --timeout=300 arabic-reshaper==3.0.0 python-bidi==0.4.2 aiofiles==23.2.1
+RUN pip install --no-cache-dir --timeout=600 numpy==1.24.3
+RUN pip install --no-cache-dir --timeout=900 opencv-python-headless==4.8.1.78
+RUN pip install --no-cache-dir --timeout=300 boto3==1.34.0 botocore==1.34.0
+RUN pip install --no-cache-dir --timeout=300 redis>=5.0.0 celery>=5.3.0 celery[redis]
+RUN pip install --no-cache-dir --timeout=300 python-socketio==5.9.0 python-engineio==4.7.0
+RUN pip install --no-cache-dir --timeout=300 structlog>=23.2.0 loguru>=0.7.2
 
 # Copy application code
 COPY . .

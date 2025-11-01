@@ -49,4 +49,5 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8001/health || exit 1
 
 # Run the application
-CMD ["python", "-m", "uvicorn", "app.main:sio_app", "--host", "0.0.0.0", "--port", "8001"]
+# Use simple mode by default (no Redis/Celery required)
+CMD ["python", "-m", "uvicorn", "app.main_simple:app", "--host", "0.0.0.0", "--port", "8001"]

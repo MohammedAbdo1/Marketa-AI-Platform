@@ -88,6 +88,23 @@
                   <span v-for="(tag, idx) in post.hashtags" :key="idx" class="badge bg-light text-dark">{{ tag }}</span>
                 </div>
               </div>
+
+              <!-- Editor Button -->
+              <div class="mt-3 d-flex gap-2">
+                <router-link 
+                  :to="{ name: 'posts.edit', params: { id: post.id } }"
+                  class="btn btn-sm btn-primary"
+                >
+                  <i class="fas fa-edit"></i> تحرير
+                </router-link>
+                <button 
+                  v-if="post.is_composed" 
+                  class="btn btn-sm btn-outline-info"
+                  :title="'منشور ذكي مع ' + (post.composition_layers?.length || 0) + ' طبقة'"
+                >
+                  <i class="fas fa-layer-group"></i> {{ post.composition_layers?.length || 0 }} طبقات
+                </button>
+              </div>
             </div>
           </div>
         </div>

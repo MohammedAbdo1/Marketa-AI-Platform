@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
@@ -98,6 +99,27 @@ class Campaign extends Model
     public function aiRequests(): HasMany
     {
         return $this->hasMany(AiRequest::class);
+    }
+
+    /**
+     * Get designs linked to this campaign (many-to-many).
+     */
+    public function designs(): BelongsToMany
+    {
+        return $this->belongsToMany(Design::class, 'campaign_design')
+                    ->withPivot([
+                        'platform', 
+                        'scheduled_date', 
+                        'scheduled_time',
+                        'published_at',
+                        'status',
+                        'post_content_ar',
+                        'post_content_en',
+                        'hashtags',
+                        'order'
+                    ])
+                    ->withTimestamps()
+                    ->orderBy('campaign_design.order');
     }
 
     /**

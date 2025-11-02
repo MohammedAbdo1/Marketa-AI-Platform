@@ -31,10 +31,11 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:8000"],
+    allow_origins=["*"],  # Allow all origins for static files
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 # Global agents (lazy loaded)
@@ -143,11 +144,11 @@ async def generate_campaign(request: CampaignPreviewRequest, raw: Request):
                     logger.info({"stage": "py_image_provider_done", "rid": rid, "idx": idx, "platform": platform, "url": image_url})
                 except Exception as e:
                     logger.exception({"stage": "py_image_error", "rid": rid, "idx": idx, "platform": platform, "error": str(e), "repr": repr(e)})
-                    # Temporary fallback when Stability is down (520 errors)
-                    seed = f"{getattr(request, 'product_name', 'marketa')}-{idx}"
-                    w, h = (size.split('x') if 'x' in size else ['1024','1024'])
-                    image_url = f"https://picsum.photos/seed/{seed}/{w}/{h}"
-                    logger.warning({"stage": "py_image_fallback_stability_down", "rid": rid, "idx": idx, "platform": platform, "url": image_url})
+                    # Re-raise the exception - NO fallback to random images
+                    raise HTTPException(
+                        status_code=500, 
+                        detail=f"Image generation failed: {str(e)}. Please check Stability AI API configuration."
+                    )
 
                 if hasattr(post, 'image_url'):
                     post.image_url = image_url
@@ -265,13 +266,97 @@ async def test_image(request: dict, raw: Request):
         if hasattr(image_agent, "generate_image"):
             url = await image_agent.generate_image(prompt)
         else:
-            url = "https://picsum.photos/seed/marketa/512/512"
+            raise HTTPException(
+                status_code=500,
+                detail="Image generation is not available. Please configure Stability AI API."
+            )
         resp = {"prompt": prompt, "image_url": url, "ok": True}
         logger.info({"stage": "py_done", "rid": rid, "elapsed": round(time.time() - t0, 3)})
         return resp
     except Exception as e:
         logger.exception({"stage": "py_error", "rid": rid, "error": str(e)})
         raise HTTPException(status_code=500, detail=f"Image test failed: {str(e)}")
+
+
+@app.post("/api/ai/conversation/message")
+async def process_conversation_message(raw: Request):
+    """
+    Process user message in AI conversation and generate design images
+    """
+    rid = raw.headers.get("X-Request-ID", "-")
+    try:
+        logger.info({"stage": "ai_conversation_received", "rid": rid})
+        
+        request = await raw.json()
+        content = request.get("content", "").strip()
+        design_type = request.get("design_type", "social_post")
+        conversation_id = request.get("conversation_id", "")
+        
+        if not content:
+            raise HTTPException(status_code=400, detail="Message content is required")
+        
+        # Generate ONLY ONE design (as per user requirement)
+        image_agent = get_image_agent()
+        images = []
+        
+        try:
+            # Generate single image
+            image_url = await image_agent.generate_image(content)
+            
+            images.append({
+                "url": image_url,
+                "title": "تصميم 1",
+                "provider": getattr(image_agent, 'last_provider', 'pollinations')
+            })
+            
+            logger.info({
+                "stage": "image_generated", 
+                "rid": rid,
+                "url": image_url
+            })
+        except Exception as img_error:
+            logger.error({
+                "stage": "image_generation_failed", 
+                "rid": rid,
+                "error": str(img_error)
+            })
+        
+        # Prepare response
+        if len(images) > 0:
+            response_message = "تم! إليك تصميمك للسوشيال ميديا 🎨"
+        else:
+            response_message = "عذراً، حدثت مشكلة في توليد التصميم. حاول مرة أخرى"
+        
+        response = {
+            "response": response_message,
+            "images": images,
+            "suggestions": [
+                "أضف المزيد من التفاصيل",
+                "غير الألوان",
+                "جرب نمط مختلف",
+                "أضف صورة ماكينة خياطة حديثة",
+                "بألوان عصرية",
+                "المزيد من التصاميم"
+            ],
+            "metadata": {
+                "prompt_used": content,
+                "design_type": design_type,
+                "images_count": len(images),
+                "timestamp": time.time()
+            }
+        }
+        
+        logger.info({
+            "stage": "ai_conversation_done", 
+            "rid": rid, 
+            "images_generated": len(images)
+        })
+        return response
+        
+    except Exception as e:
+        logger.exception({"stage": "ai_conversation_error", "rid": rid, "error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Conversation failed: {str(e)}")
+
 
 if __name__ == "__main__":
     uvicorn.run(

@@ -17,6 +17,16 @@
         <span>{{ $t('sidebar.campaigns') }}</span>
       </router-link>
       
+      <router-link to="/dashboard/designs" class="nav-item">
+        <i class="bx bx-layer"></i>
+        <span>{{ $t('sidebar.designs') }}</span>
+      </router-link>
+      
+      <router-link to="/dashboard/ai" class="nav-item">
+        <i class="bx bx-sparkle"></i>
+        <span>{{ $t('sidebar.ai_studio') }}</span>
+      </router-link>
+      
       <router-link to="/dashboard/brands" class="nav-item">
         <i class="bx bx-palette"></i>
         <span>{{ $t('sidebar.brands') }}</span>

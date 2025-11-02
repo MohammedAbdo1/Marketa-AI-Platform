@@ -17,7 +17,7 @@
     "axios": "^1.7.9",
     "bootstrap": "^5.3.3",
     "boxicons": "^2.1.4",
-    "fabric": "^5.3.0",
+    "fabric": "^5.5.2",
     "pinia": "^3.0.3",
     "socket.io-client": "^4.8.1",
     "vue": "^3.5.22",

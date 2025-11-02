@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Campaign;
 use App\Models\CampaignPost;
+use App\Models\Design;
 use App\Models\Brand;
 use App\Services\PythonAIService;
 use App\Jobs\GenerateCampaignPosts;
@@ -520,6 +521,107 @@ class CampaignController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to suggest colors',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Attach existing design to campaign
+     */
+    public function attachDesign(Request $request, $uuid): JsonResponse
+    {
+        try {
+            $campaign = Campaign::where('uuid', $uuid)->firstOrFail();
+            
+            // Check ownership
+            if ($campaign->organization_id !== Auth::user()->organization_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'design_uuid' => 'required|exists:designs,uuid',
+                'platform' => 'required|string',
+                'scheduled_date' => 'nullable|date',
+                'scheduled_time' => 'nullable|date_format:H:i',
+                'post_content_ar' => 'nullable|string',
+                'post_content_en' => 'nullable|string',
+                'hashtags' => 'nullable|string',
+                'order' => 'nullable|integer',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $design = Design::where('uuid', $request->design_uuid)->firstOrFail();
+
+            // Attach with pivot data
+            $campaign->designs()->syncWithoutDetaching([
+                $design->id => [
+                    'platform' => $request->platform,
+                    'scheduled_date' => $request->scheduled_date,
+                    'scheduled_time' => $request->scheduled_time,
+                    'post_content_ar' => $request->post_content_ar,
+                    'post_content_en' => $request->post_content_en,
+                    'hashtags' => $request->hashtags,
+                    'order' => $request->order ?? 0,
+                    'status' => 'pending',
+                ]
+            ]);
+
+            // Increment design usage count
+            $design->incrementUsage();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Design attached to campaign successfully'
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to attach design',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Detach design from campaign
+     */
+    public function detachDesign($campaignUuid, $designUuid): JsonResponse
+    {
+        try {
+            $campaign = Campaign::where('uuid', $campaignUuid)->firstOrFail();
+            
+            // Check ownership
+            if ($campaign->organization_id !== Auth::user()->organization_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
+            $design = Design::where('uuid', $designUuid)->firstOrFail();
+
+            // Detach
+            $campaign->designs()->detach($design->id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Design detached from campaign successfully'
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to detach design',
                 'error' => $e->getMessage()
             ], 500);
         }

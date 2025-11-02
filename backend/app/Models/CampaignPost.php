@@ -6,13 +6,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class CampaignPost extends Model
 {
     use SoftDeletes;
 
     protected $fillable = [
+        'uuid',
         'campaign_id',
+        'design_id',
         'platform',
         'post_type',
         'content_ar',
@@ -55,6 +58,14 @@ class CampaignPost extends Model
     public function campaign(): BelongsTo
     {
         return $this->belongsTo(Campaign::class);
+    }
+
+    /**
+     * Get the design linked to this post.
+     */
+    public function design(): BelongsTo
+    {
+        return $this->belongsTo(Design::class);
     }
 
     /**
@@ -136,13 +147,42 @@ class CampaignPost extends Model
      */
     public function exportForEditor(): array
     {
+        // If linked to a design, use design data
+        if ($this->design_id && $this->design) {
+            return $this->design->exportForEditor();
+        }
+
+        // Otherwise use post's own composition data (backward compatibility)
         return [
             'id' => $this->id,
+            'uuid' => $this->uuid,
             'base_image_url' => $this->base_image_url,
             'final_image_url' => $this->media_urls[0] ?? null,
             'layers' => $this->composition_layers['layers'] ?? [],
             'dimensions' => $this->composition_layers['dimensions'] ?? [],
             'is_composed' => $this->is_composed,
         ];
+    }
+
+    /**
+     * Boot function - Auto-generate UUID
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function (CampaignPost $model) {
+            if (empty($model->uuid)) {
+                $model->uuid = (string) Str::uuid();
+            }
+        });
+    }
+
+    /**
+     * Use uuid for route model binding
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'uuid';
     }
 }

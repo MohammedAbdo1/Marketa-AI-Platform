@@ -18,6 +18,9 @@ use App\Http\Controllers\Api\Auth\SocialAuthController;
 use App\Http\Controllers\Api\BrandController;
 use App\Http\Controllers\Api\CampaignController;
 use App\Http\Controllers\Api\CampaignPostController;
+use App\Http\Controllers\Api\DesignController;
+use App\Http\Controllers\Api\AiConversationController;
+use App\Http\Controllers\Api\ImageProxyController;
 use App\Http\Controllers\Api\PublicController;
 use App\Http\Controllers\Api\Admin\AIDiagnosticsController as AdminAIDiagnosticsController;
 use App\Http\Controllers\Api\AIDiagnosticsController;
@@ -33,6 +36,10 @@ use Illuminate\Support\Facades\Route;
 // ═══════════════════════════════════════════════════════════════════
 // 🌍 Public Routes (No Auth Required)
 // ═══════════════════════════════════════════════════════════════════
+
+// Image proxy (no auth required)
+Route::get('images/{filename}', [ImageProxyController::class, 'show'])
+     ->name('images.proxy');
 
 // CMS - Public pages
 Route::get('pages/{slug}', [PublicController::class, 'getPage']);
@@ -105,7 +112,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('campaign-posts/{id}/regenerate', [CampaignPostController::class, 'regenerate']);
     Route::post('campaign-posts/{id}/generate-media', [CampaignPostController::class, 'generateMedia']);
     Route::put('campaign-posts/{id}/schedule', [CampaignPostController::class, 'schedule']);
-    
+
     // Layer Management & Composition (for image editing)
     Route::get('campaign-posts/{id}/layers', [CampaignPostController::class, 'exportLayers']);
     Route::post('campaign-posts/{id}/layers', [CampaignPostController::class, 'addLayer']);
@@ -114,9 +121,28 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('campaign-posts/{id}/layers/import', [CampaignPostController::class, 'importLayers']);
     Route::post('campaign-posts/{id}/layers/{layerIndex}/regenerate', [CampaignPostController::class, 'regenerateLayer']);
 
-    // AI Diagnostics (User-facing)
-    Route::post('ai/test-text', [AIDiagnosticsController::class, 'testText'])->name('ai.test-text');
-    Route::post('ai/test-image', [AIDiagnosticsController::class, 'testImage'])->name('ai.test-image');
+    // Designs Management (New Unified System)
+    Route::get('designs/templates', [DesignController::class, 'templates'])->name('designs.templates');
+    Route::apiResource('designs', DesignController::class)->parameters(['designs' => 'design']);
+    Route::post('designs/{design}/duplicate', [DesignController::class, 'duplicate'])->name('designs.duplicate');
+    Route::post('designs/{design}/export', [DesignController::class, 'export'])->name('designs.export');
+    Route::post('designs/{design}/template', [DesignController::class, 'toTemplate'])->name('designs.template');
+
+    // AI Conversations & Studio
+    Route::prefix('ai')->group(function () {
+        Route::apiResource('conversations', AiConversationController::class)
+             ->parameters(['conversations' => 'conversation']);
+        Route::post('conversations/{conversation}/messages', [AiConversationController::class, 'sendMessage'])
+             ->name('ai.conversations.messages');
+        
+        // AI Diagnostics (User-facing)
+        Route::post('test-text', [AIDiagnosticsController::class, 'testText'])->name('ai.test-text');
+        Route::post('test-image', [AIDiagnosticsController::class, 'testImage'])->name('ai.test-image');
+    });
+
+    // Campaign-Design Linking
+    Route::post('campaigns/{campaign}/designs', [CampaignController::class, 'attachDesign'])->name('campaigns.designs.attach');
+    Route::delete('campaigns/{campaign}/designs/{design}', [CampaignController::class, 'detachDesign'])->name('campaigns.designs.detach');
 });
 
 // ═══════════════════════════════════════════════════════════════════

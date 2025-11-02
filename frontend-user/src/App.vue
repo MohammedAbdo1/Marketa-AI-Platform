@@ -8,10 +8,16 @@ import { useAuthStore } from './stores/auth'
 
 const authStore = useAuthStore()
 
-onMounted(() => {
-  // Fetch user if token exists
-  if (authStore.token) {
-    authStore.fetchUser()
+onMounted(async () => {
+  // Fetch user if token exists and not logging out
+  if (authStore.token && !authStore.isLoggingOut) {
+    try {
+      await authStore.fetchUser()
+    } catch (error) {
+      // Error is already handled by axios interceptor
+      // Just log it here for debugging
+      console.debug('Failed to fetch user on mount:', error.message)
+    }
   }
 })
 </script>

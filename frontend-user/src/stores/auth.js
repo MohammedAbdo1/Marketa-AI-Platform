@@ -7,7 +7,8 @@ export const useAuthStore = defineStore('auth', {
     token: localStorage.getItem('token') || null,
     isAuthenticated: !!localStorage.getItem('token'),
     loading: false,
-    error: null
+    error: null,
+    isLoggingOut: false
   }),
 
   getters: {
@@ -63,6 +64,13 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async logout() {
+      // Prevent multiple simultaneous logout calls
+      if (this.isLoggingOut) {
+        return
+      }
+      
+      this.isLoggingOut = true
+      
       try {
         await axios.post('/logout')
       } catch (error) {
@@ -71,18 +79,22 @@ export const useAuthStore = defineStore('auth', {
         this.user = null
         this.token = null
         this.isAuthenticated = false
+        this.isLoggingOut = false
         localStorage.removeItem('token')
       }
     },
 
     async fetchUser() {
-      if (!this.token) return
+      if (!this.token || this.isLoggingOut) return
       
       try {
         const response = await axios.get('/profile')
         this.user = response.data.user
       } catch (error) {
-        this.logout()
+        // Don't call logout here - let axios interceptor handle 401 errors
+        // to avoid potential infinite loops
+        console.error('Fetch user error:', error)
+        throw error
       }
     },
 

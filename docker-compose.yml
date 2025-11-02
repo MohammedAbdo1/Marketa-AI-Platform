@@ -140,12 +140,14 @@ services:
     container_name: marketa_api
     ports:
       - "8001:8001"
+    env_file:
+      - ./ai-service/.env
     environment:
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - DATABASE_URL=postgresql://postgres:123456@postgres:5432/marketing_ai
-      - AI_PUBLIC_BASE_URL=http://api:8001
+      - AI_PUBLIC_BASE_URL=http://localhost:8001
     depends_on:
       redis:
         condition: service_healthy

@@ -20,11 +20,34 @@ class Settings:
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     STABILITY_API_KEY = os.getenv("STABILITY_API_KEY")
+    HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
+    REPLICATE_API_KEY = os.getenv("REPLICATE_API_KEY")
+    
+    # ========================================
+    # Image Generation Providers Configuration
+    # ========================================
+    
+    # Priority order (comma-separated)
+    # For development: Use free providers first
+    # For production: Use paid providers first for better quality
+    IMAGE_PROVIDERS_PRIORITY = os.getenv(
+        "IMAGE_PROVIDERS_PRIORITY", 
+        "pollinations,huggingface,openai,stability"
+    )
+    
+    # Enable/Disable providers individually
+    ENABLE_STABILITY = os.getenv("ENABLE_STABILITY", "true").lower() == "true"
+    ENABLE_OPENAI = os.getenv("ENABLE_OPENAI", "true").lower() == "true"
+    ENABLE_HUGGINGFACE = os.getenv("ENABLE_HUGGINGFACE", "true").lower() == "true"
+    ENABLE_POLLINATIONS = os.getenv("ENABLE_POLLINATIONS", "true").lower() == "true"
+    ENABLE_REPLICATE = os.getenv("ENABLE_REPLICATE", "false").lower() == "true"
     
     def __init__(self):
         print(f"Google API Key: {'Set' if self.GOOGLE_API_KEY else 'Missing'}")
         print(f"OpenAI API Key: {'Set' if self.OPENAI_API_KEY else 'Missing'}")
         print(f"Stability API Key: {'Set' if self.STABILITY_API_KEY else 'Missing'}")
+        print(f"HuggingFace API Key: {'Set' if self.HUGGINGFACE_API_KEY else 'Missing'}")
+        print(f"Image Providers Priority: {self.IMAGE_PROVIDERS_PRIORITY}")
 
     # AI Model Settings
     TEXT_MODEL = "gemini-2.0-flash"

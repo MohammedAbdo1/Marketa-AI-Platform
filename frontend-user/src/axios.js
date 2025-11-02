@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { useAuthStore } from './stores/auth'
+import router from './router'
 
 const instance = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
@@ -27,7 +28,7 @@ instance.interceptors.request.use(
 // Response interceptor
 instance.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     // Handle daily limit exceeded
     if (error.response?.status === 429 && error.response?.data?.error === 'DAILY_LIMIT_EXCEEDED') {
       // Show special message for daily limit
@@ -37,8 +38,18 @@ instance.interceptors.response.use(
     // Handle unauthorized
     if (error.response?.status === 401) {
       const authStore = useAuthStore()
-      authStore.logout()
-      window.location.href = '/auth/login'
+      // Call logout and redirect to login
+      // Using router.push instead of window.location to avoid page reload
+      await authStore.logout()
+      
+      // Only redirect if not already on login page
+      if (router.currentRoute.value.name !== 'login') {
+        router.push({ 
+          name: 'login', 
+          query: { redirect: router.currentRoute.value.fullPath },
+          replace: true 
+        })
+      }
     }
     
     return Promise.reject(error)

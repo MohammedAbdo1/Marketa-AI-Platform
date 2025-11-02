@@ -2,6 +2,7 @@ import google.generativeai as genai
 from config import settings
 from app.services.cache_service import cache_service
 from app.services.stability import StabilityAIService
+from app.services.openai_images import OpenAIImageService
 from app.services.image_compositor import ImageCompositor
 from app.services.storage import storage
 import asyncio
@@ -10,64 +11,179 @@ import uuid
 import base64
 import logging
 import requests
+import aiohttp
 
 class ImageGeneratorAgent:
     def __init__(self):
-        self.stability = None
-        if settings.STABILITY_API_KEY:
-            try:
-                self.stability = StabilityAIService()
-            except Exception:
-                self.stability = None
         self.logger = logging.getLogger("uvicorn.error")
+        self.providers = {}  # Dict to store available providers
+        self.provider_names = []  # Ordered list based on priority
+        
+        # Load providers based on priority setting
+        priority_list = settings.IMAGE_PROVIDERS_PRIORITY.split(',')
+        
+        for provider in priority_list:
+            provider = provider.strip().lower()
+            
+            # Pollinations (FREE - No API key needed)
+            if provider == 'pollinations' and settings.ENABLE_POLLINATIONS:
+                try:
+                    from app.services.pollinations_images import PollinationsImageService
+                    self.providers['pollinations'] = PollinationsImageService()
+                    self.provider_names.append('pollinations')
+                    self.logger.info("✅ Pollinations provider loaded (FREE unlimited)")
+                except Exception as e:
+                    self.logger.warning(f"⚠️ Pollinations init failed: {e}")
+            
+            # HuggingFace (FREE tier - 1000/month)
+            elif provider == 'huggingface' and settings.ENABLE_HUGGINGFACE:
+                try:
+                    from app.services.huggingface_images import HuggingFaceImageService
+                    self.providers['huggingface'] = HuggingFaceImageService(
+                        api_key=settings.HUGGINGFACE_API_KEY
+                    )
+                    self.provider_names.append('huggingface')
+                    self.logger.info("✅ HuggingFace provider loaded (FREE tier)")
+                except Exception as e:
+                    self.logger.warning(f"⚠️ HuggingFace init failed: {e}")
+            
+            # Stability AI (PAID - High quality)
+            elif provider == 'stability' and settings.ENABLE_STABILITY:
+                if settings.STABILITY_API_KEY and settings.STABILITY_API_KEY != 'optional':
+                    try:
+                        from app.services.stability import StabilityAIService
+                        self.providers['stability'] = StabilityAIService()
+                        self.provider_names.append('stability')
+                        self.logger.info("✅ Stability AI provider loaded")
+                    except Exception as e:
+                        self.logger.warning(f"⚠️ Stability init failed: {e}")
+            
+            # OpenAI DALL-E (PAID - Very high quality)
+            elif provider == 'openai' and settings.ENABLE_OPENAI:
+                if settings.OPENAI_API_KEY and settings.OPENAI_API_KEY != 'optional':
+                    try:
+                        from app.services.openai_images import OpenAIImageService
+                        self.providers['openai'] = OpenAIImageService()
+                        self.provider_names.append('openai')
+                        self.logger.info("✅ OpenAI DALL-E provider loaded")
+                    except Exception as e:
+                        self.logger.warning(f"⚠️ OpenAI init failed: {e}")
+        
+        # Log final status
+        if not self.providers:
+            self.logger.error("❌ No image providers available!")
+        else:
+            self.logger.info(f"🎨 Active image providers (priority order): {self.provider_names}")
+        
+        # Initialize compositor
         self.compositor = None
         if settings.IMAGE_COMPOSITION_ENABLED:
             try:
                 self.compositor = ImageCompositor()
             except Exception as e:
                 self.logger.warning(f"Compositor initialization failed: {e}")
+        
+        # Initialize Gemini for prompt enhancement
         if settings.GOOGLE_API_KEY:
             genai.configure(api_key=settings.GOOGLE_API_KEY)
             self.model = genai.GenerativeModel(
                 settings.TEXT_MODEL,
                 generation_config=genai.types.GenerationConfig(
-                    temperature=0.3,  # Lower temperature for image generation
-                    max_output_tokens=500,  # Shorter for image prompts
+                    temperature=0.3,
+                    max_output_tokens=500,
                     candidate_count=1
                 )
             )
         else:
             self.model = None
     
-    async def generate_image(self, prompt, size: str = "1024x1024"):
-        """Generate image for a post"""
-        # Prefer Stability if key is available
-        if self.stability:
+    async def generate_image(self, prompt, size: str = "1024x1024", preferred_provider: str = None):
+        """
+        Generate image using available providers in priority order
+        
+        Args:
+            prompt: Text description of the image
+            size: Image size in format "WIDTHxHEIGHT"
+            preferred_provider: Optional - force specific provider (for future user selection)
+            
+        Returns:
+            URL to saved image
+        """
+        # If user specified a provider, try it first
+        if preferred_provider and preferred_provider in self.providers:
             try:
-                self.logger.info({"stage": "py_image_provider_start", "provider": "stability", "size": size})
-                data_url = await self.stability.generate_image(prompt, style=settings.IMAGE_GEN_STYLE, size=size)
-                # data:image/png;base64,.... -> save to static and return URL
-                header, b64 = data_url.split(",", 1)
-                image_bytes = base64.b64decode(b64)
-                images_dir = os.path.join("app", "static", "images")
-                os.makedirs(images_dir, exist_ok=True)
-                filename = f"{uuid.uuid4().hex}.png"
-                filepath = os.path.join(images_dir, filename)
-                with open(filepath, "wb") as f:
-                    f.write(image_bytes)
-                self.logger.info({"stage": "py_image_provider_saved", "provider": "stability", "path": filepath})
-                return f"{settings.IMAGE_BASE_URL}/static/images/{filename}"
+                return await self._generate_with_provider(preferred_provider, prompt, size)
             except Exception as e:
-                self.logger.exception({"stage": "py_image_provider_error", "provider": "stability", "error": str(e)})
-                raise RuntimeError(f"Stability error: {str(e)}")
-
-        if not self.model:
-            raise RuntimeError("No image provider available")
+                self.logger.warning(f"⚠️ Preferred provider '{preferred_provider}' failed: {str(e)}")
+                # Fall through to try other providers
         
-        # Create cache key from prompt
-        cache_key = f"image:{hash(prompt)}"
+        # Try providers in priority order
+        last_error = None
+        for provider_name in self.provider_names:
+            try:
+                return await self._generate_with_provider(provider_name, prompt, size)
+            except Exception as e:
+                last_error = e
+                self.logger.warning(f"⚠️ Provider '{provider_name}' failed: {str(e)}, trying next...")
+                continue
         
-        # Check cache first
+        # All providers failed
+        available = ', '.join(self.provider_names) if self.provider_names else 'None'
+        raise RuntimeError(f"❌ All image providers failed! Available: {available}. Last error: {str(last_error)}")
+    
+    async def _generate_with_provider(self, provider_name: str, prompt: str, size: str) -> str:
+        """
+        Generate image with a specific provider and save it locally
+        
+        Returns:
+            URL to saved image in static folder
+        """
+        provider = self.providers[provider_name]
+        
+        self.logger.info({"stage": "py_image_provider_start", "provider": provider_name, "size": size, "prompt": prompt[:100]})
+        
+        # Generate image (returns either data URL or direct URL)
+        result = await provider.generate_image(prompt, size)
+        
+        # Handle different result types
+        image_bytes = None
+        
+        if result.startswith('http://') or result.startswith('https://'):
+            # Direct URL (Pollinations) - download it
+            self.logger.info(f"Downloading image from {provider_name} CDN...")
+            async with aiohttp.ClientSession() as session:
+                async with session.get(result, timeout=60) as resp:
+                    if resp.status != 200:
+                        raise Exception(f"Failed to download image: HTTP {resp.status}")
+                    image_bytes = await resp.read()
+                    
+        elif result.startswith('data:image'):
+            # Base64 data URL (HuggingFace, Stability, etc.)
+            header, b64 = result.split(",", 1)
+            image_bytes = base64.b64decode(b64)
+        else:
+            raise Exception(f"Unknown result format from {provider_name}: {result[:50]}")
+        
+        # Save image to local storage
+        images_dir = os.path.join("app", "static", "images")
+        os.makedirs(images_dir, exist_ok=True)
+        filename = f"{uuid.uuid4().hex}.png"
+        filepath = os.path.join(images_dir, filename)
+        
+        with open(filepath, "wb") as f:
+            f.write(image_bytes)
+        
+        final_url = f"{settings.IMAGE_BASE_URL}/static/images/{filename}"
+        
+        self.logger.info({
+            "stage": "py_image_provider_success", 
+            "provider": provider_name, 
+            "path": filepath,
+            "size_bytes": len(image_bytes),
+            "url": final_url
+        })
+        
+        return final_url
         cached_result = cache_service.get_cached_ai_result(cache_key, "image")
         if cached_result:
             return cached_result

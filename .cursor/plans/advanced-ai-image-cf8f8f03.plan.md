@@ -1,4 +1,4 @@
-<!-- cf8f8f03-e424-4a37-875d-b2e56c472fa2 daeb6889-97b2-495f-bb75-7ef4d927d087 -->
+<!-- cf8f8f03-e424-4a37-875d-b2e56c472fa2 25c25e3d-e8c6-4af6-96b8-6a353b942c18 -->
 # Advanced AI Image Composition & Editor System
 
 ## Overview
@@ -823,3 +823,20 @@ Schema::table('campaign_posts', function (Blueprint $table) {
 - Fonts licensed for commercial use (Cairo, Roboto = Open Font License)
 - Canvas exports at 2x resolution for Retina displays
 - Composition analysis cached for 1 hour per unique description
+
+### To-dos
+
+- [ ] Create all database migrations (designs, ai_conversations, ai_messages, pivots, UUID additions)
+- [ ] Create Design, AiConversation, AiMessage models with relationships and business logic
+- [ ] Create DesignController and AiConversationController with RESTful endpoints
+- [ ] Add API routes for designs and AI conversations to routes/api.php
+- [ ] Create design.js and aiConversation.js Pinia stores with actions and getters
+- [ ] Build DesignsList.vue with grid, filters, search, and card components
+- [ ] Build AiStudio.vue with chat interface, design preview, and conversation management
+- [ ] Modify PostEditor.vue to support loading and saving designs (not just campaign posts)
+- [ ] Update CampaignDetails and CampaignWizard to work with designs instead of posts
+- [ ] Add design and AI routes to router, update dashboard navigation sidebar
+- [ ] Update AI service endpoints to return design structure and support conversations
+- [ ] Create and test migration command to convert existing campaign_posts to designs
+- [ ] Write API tests and E2E tests for designs, AI conversations, and editor integration
+- [ ] Polish UI, add loading states, optimize performance, write documentation

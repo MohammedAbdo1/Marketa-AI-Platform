@@ -18,6 +18,7 @@ import 'vue-toastification/dist/index.css'
 
 // Custom CSS
 import './assets/main.css'
+import './styles/editor.css'
 
 const app = createApp(App)
 

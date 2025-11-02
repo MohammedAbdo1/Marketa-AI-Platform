@@ -63,6 +63,10 @@ const toggleSidebar = () => {
   color: #6c757d;
   background: white;
   border-top: 1px solid #dee2e6;
+  margin-top: auto;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
 }
 
 /* Mobile */

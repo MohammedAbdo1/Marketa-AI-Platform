@@ -131,6 +131,42 @@ const router = createRouter({
           component: () => import('../views/dashboard/campaigns/CampaignDetails.vue'),
         },
         {
+          path: 'posts/:id/edit',
+          name: 'posts.edit',
+          component: () => import('../views/EditorView.vue'),
+        },
+        // Designs Routes (New)
+        {
+          path: 'designs',
+          name: 'designs',
+          component: () => import('../views/dashboard/designs/DesignsList.vue'),
+        },
+        {
+          path: 'designs/:uuid',
+          name: 'design-detail',
+          component: () => import('../views/dashboard/designs/DesignsList.vue'),
+        },
+        {
+          path: 'designs/:uuid/edit',
+          name: 'design-edit',
+          beforeEnter: (to) => {
+            // Open editor in new tab
+            window.open(`/editor/${to.params.uuid}`, '_blank')
+            return false
+          }
+        },
+        // AI Studio Routes (New)
+        {
+          path: 'ai',
+          name: 'ai-studio',
+          component: () => import('../views/dashboard/ai/AiStudio.vue'),
+        },
+        {
+          path: 'ai/conversations/:uuid',
+          name: 'ai-conversation',
+          component: () => import('../views/dashboard/ai/AiStudio.vue'),
+        },
+        {
           path: 'usage',
           name: 'usage',
           component: () => import('../views/dashboard/Usage.vue'),
@@ -141,6 +177,14 @@ const router = createRouter({
           component: () => import('../views/dashboard/Settings.vue'),
         },
       ],
+    },
+    
+    // Editor (Standalone Page - Opens in new tab)
+    {
+      path: '/editor/:uuid',
+      name: 'Editor',
+      component: () => import('@/layouts/EditorLayout.vue'),
+      meta: { requiresAuth: true }
     },
     
     // 404 Not Found
@@ -165,13 +209,25 @@ router.beforeEach(async (to, from, next) => {
   const requiresAuth = to.meta.requiresAuth
   const isGuest = to.meta.guest
 
+  // If currently logging out, allow navigation but don't redirect
+  if (authStore.isLoggingOut) {
+    // If going to login page during logout, allow it
+    if (to.name === 'login') {
+      next()
+      return
+    }
+    // Otherwise wait for logout to complete
+    next({ name: 'login', replace: true })
+    return
+  }
+
   // If route requires auth and user is not authenticated
   if (requiresAuth && !authStore.isAuthenticated) {
-    next({ name: 'login', query: { redirect: to.fullPath } })
+    next({ name: 'login', query: { redirect: to.fullPath }, replace: true })
   }
   // If route is for guests only (login, register) and user is authenticated
   else if (isGuest && authStore.isAuthenticated) {
-    next({ name: 'dashboard' })
+    next({ name: 'dashboard', replace: true })
   }
   // Otherwise, proceed
   else {

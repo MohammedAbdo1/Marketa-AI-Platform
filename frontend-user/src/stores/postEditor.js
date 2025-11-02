@@ -19,6 +19,8 @@ export const usePostEditorStore = defineStore('postEditor', {
     canUndo: (state) => state.historyIndex > 0,
     canRedo: (state) => state.historyIndex < state.history.length - 1,
     hasChanges: (state) => state.isDirty,
+    getLayerById: (state) => (id) => state.layers.find(l => l.id === id),
+    getLayerIndex: (state) => (id) => state.layers.findIndex(l => l.id === id),
   },
 
   actions: {
@@ -105,24 +107,26 @@ export const usePostEditorStore = defineStore('postEditor', {
     },
 
     /**
-     * Update layer
+     * Update layer by ID
      */
-    updateLayer(layerIndex, changes) {
-      if (this.layers[layerIndex]) {
-        this.layers[layerIndex] = { ...this.layers[layerIndex], ...changes }
+    updateLayer(layerId, changes) {
+      const index = this.layers.findIndex(l => l.id === layerId)
+      if (index !== -1) {
+        this.layers[index] = { ...this.layers[index], ...changes }
         this.saveToHistory()
-        console.log('[Editor] Layer updated:', layerIndex)
+        console.log('[Editor] Layer updated:', layerId)
       }
     },
 
     /**
-     * Delete layer
+     * Delete layer by ID
      */
-    deleteLayer(layerIndex) {
-      if (layerIndex >= 0 && layerIndex < this.layers.length) {
-        this.layers.splice(layerIndex, 1)
+    deleteLayer(layerId) {
+      const index = this.layers.findIndex(l => l.id === layerId)
+      if (index !== -1) {
+        this.layers.splice(index, 1)
         this.saveToHistory()
-        console.log('[Editor] Layer deleted:', layerIndex)
+        console.log('[Editor] Layer deleted:', layerId)
       }
     },
 

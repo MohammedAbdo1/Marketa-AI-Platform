@@ -269,8 +269,8 @@ const handleDownload = () => {
 }
 
 .export-modal {
-  background: white;
-  border-radius: 16px;
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-modal);
   width: 90%;
   max-width: 480px;
   max-height: 90vh;
@@ -280,11 +280,11 @@ const handleDownload = () => {
 }
 
 .modal-header {
-  padding: 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  padding: var(--space-6);
+  border-bottom: 1px solid var(--color-border-light);
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .btn-back {
@@ -315,10 +315,10 @@ const handleDownload = () => {
 }
 
 .modal-body {
-  padding: 1.5rem;
+  padding: var(--space-6);
   max-height: calc(90vh - 200px);
   overflow-y: auto;
-  overflow-x: visible; /* Allow dropdown to overflow horizontally */
+  overflow-x: visible;
 }
 
 .form-group {
@@ -560,14 +560,14 @@ const handleDownload = () => {
 }
 
 .modal-footer {
-  padding: 1.5rem;
-  border-top: 1px solid #e2e8f0;
+  padding: var(--space-6);
+  border-top: 1px solid var(--color-border-light);
 }
 
 .btn-download {
   width: 100%;
-  padding: 0.875rem 1.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: var(--space-3) var(--space-6);
+  background: var(--color-brand-primary);
   color: white;
   border: none;
   border-radius: 8px;

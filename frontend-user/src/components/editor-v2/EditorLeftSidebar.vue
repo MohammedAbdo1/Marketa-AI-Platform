@@ -130,68 +130,72 @@ const { t } = useI18n()
 <style scoped>
 .editor-left-sidebar {
   width: 70px;
-  background: white;
-  border-right: 1px solid #e2e8f0;
+  background: var(--color-bg-primary);
+  border-right: 1px solid var(--color-border-light);
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 1rem 0;
-  gap: 0.5rem;
+  padding: var(--space-4) 0;
+  gap: var(--space-2);
   overflow-y: auto;
-  z-index: 200;
+  z-index: var(--z-dropdown);
+}
+
+[dir="rtl"] .editor-left-sidebar {
+  border-right: none;
+  border-left: 1px solid var(--color-border-light);
 }
 
 .sidebar-btn {
   width: 54px;
   height: 54px;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   border: none;
   background: transparent;
-  color: #64748b;
-  font-size: 1.5rem;
+  color: var(--color-text-secondary);
+  font-size: var(--text-2xl);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--transition-fast);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--space-1);
   position: relative;
 }
 
 .sidebar-btn:hover {
-  background: #f8f9fa;
-  color: #667eea;
-  transform: scale(1.05);
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
 }
 
 .sidebar-btn.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  background: var(--color-sidebar-active);
+  color: var(--color-brand-primary);
+  font-weight: var(--font-semibold);
 }
 
 .sidebar-btn.add-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: var(--color-brand-primary);
+  color: var(--color-bg-primary);
   width: 54px;
   height: 54px;
 }
 
 .sidebar-btn.add-btn:hover {
-  transform: scale(1.1);
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+  background: var(--color-brand-primary-hover);
+  transform: scale(1.05);
 }
 
 .sidebar-btn.pro-feature i {
-  color: #f59e0b;
+  color: var(--color-purple-text);
 }
 
 .sidebar-label {
-  font-size: 0.65rem;
-  font-weight: 500;
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
   text-align: center;
-  line-height: 1;
+  line-height: var(--leading-tight);
   max-width: 50px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -201,8 +205,8 @@ const { t } = useI18n()
 .sidebar-divider {
   width: 40px;
   height: 1px;
-  background: #e2e8f0;
-  margin: 0.5rem 0;
+  background: var(--color-border-light);
+  margin: var(--space-2) 0;
 }
 
 /* Responsive */

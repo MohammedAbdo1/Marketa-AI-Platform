@@ -18,9 +18,9 @@
     </div>
 
     <!-- Canvas Container -->
-    <div class="canvas-container" ref="canvasContainer">
+    <div class="canvas-container" ref="canvasContainer" @contextmenu.prevent="handleRightClick">
       <div class="canvas-wrapper" :style="canvasWrapperStyle">
-        <canvas ref="fabricCanvas" :id="canvasId"></canvas>
+        <canvas ref="fabricCanvas" :id="canvasId" @contextmenu.prevent></canvas>
       </div>
     </div>
 
@@ -47,7 +47,9 @@ const emit = defineEmits([
   'canvas-ready',
   'object-selected',
   'canvas-modified',
-  'zoom-change'
+  'zoom-change',
+  'context-menu',
+  'history-change'
 ])
 
 const canvasId = `canvas-${Math.random().toString(36).substr(2, 9)}`
@@ -56,6 +58,11 @@ const canvasContainer = ref(null)
 const canvas = ref(null)
 const currentZoom = ref(30) // Default zoom: 30%
 const isLocked = ref(false)
+
+// History management for Undo/Redo
+const history = ref([])
+const historyStep = ref(0)
+const isHistoryAction = ref(false) // Flag to prevent saving during undo/redo
 
 const canvasWrapperStyle = computed(() => ({
   width: `${props.width}px`,
@@ -125,7 +132,22 @@ onMounted(async () => {
     canvas.value.on('selection:created', handleSelection)
     canvas.value.on('selection:updated', handleSelection)
     canvas.value.on('selection:cleared', () => emit('object-selected', null))
-    canvas.value.on('object:modified', () => emit('canvas-modified'))
+    canvas.value.on('object:modified', () => {
+      saveState()
+      emit('canvas-modified')
+    })
+    canvas.value.on('object:added', () => {
+      if (!isHistoryAction.value) {
+        saveState()
+        emit('canvas-modified')
+      }
+    })
+    canvas.value.on('object:removed', () => {
+      if (!isHistoryAction.value) {
+        saveState()
+        emit('canvas-modified')
+      }
+    })
     canvas.value.on('mouse:down', handleCanvasClick)
 
     emit('canvas-ready', canvas.value)
@@ -161,6 +183,41 @@ const handleSelection = (e) => {
   emit('object-selected', selectedObj)
 }
 
+const handleRightClick = (e) => {
+  if (!canvas.value) return
+  
+  // Get the position relative to the canvas
+  const rect = canvasContainer.value.getBoundingClientRect()
+  const x = e.clientX
+  const y = e.clientY
+  
+  // Get the clicked point in canvas coordinates
+  const pointer = canvas.value.getPointer(e)
+  
+  // Find object at this point
+  const target = canvas.value.findTarget(e, false)
+  
+  // Select the object if not already selected
+  if (target && target !== canvas.value) {
+    canvas.value.setActiveObject(target)
+    canvas.value.renderAll()
+    
+    // Update selected object bounds
+    const bounds = target.getBoundingRect()
+    target._bounds = bounds
+    emit('object-selected', target)
+  }
+  
+  // Emit context menu event with position and selected object
+  emit('context-menu', {
+    x,
+    y,
+    object: target || null
+  })
+  
+  console.log('Right click detected:', { x, y, target: target?.type })
+}
+
 const loadDesignData = async (data) => {
   if (!canvas.value || !data) {
     console.warn('Canvas or data not available:', { canvas: !!canvas.value, data: !!data })
@@ -184,6 +241,11 @@ const loadDesignData = async (data) => {
       
       canvas.value.renderAll()
       console.log('All layers loaded successfully. Total objects:', canvas.value.getObjects().length)
+      
+      // Save initial state to history after loading
+      setTimeout(() => {
+        saveState()
+      }, 100)
     } else {
       console.warn('No layers found in data')
     }
@@ -206,17 +268,22 @@ const addLayerToCanvas = async (layer) => {
   try {
     switch (layer.type) {
       case 'text':
-        const text = new fabricLib.FabricText(layer.text || 'نص', {
+        const text = new fabricLib.Text(layer.text || 'نص', {
           left: layer.left || layer.x || 100,
           top: layer.top || layer.y || 100,
           fontSize: layer.fontSize || 32,
           fill: layer.fill || '#000000',
           fontFamily: layer.fontFamily || 'Cairo',
           fontWeight: layer.fontWeight || 'normal',
+          fontStyle: layer.fontStyle || 'normal',
+          underline: layer.underline || false,
+          textAlign: layer.textAlign || 'right',
+          charSpacing: layer.charSpacing || 0,
           angle: layer.angle || 0,
           scaleX: layer.scaleX || 1,
           scaleY: layer.scaleY || 1,
-          opacity: layer.opacity !== undefined ? layer.opacity : 1
+          opacity: layer.opacity !== undefined ? layer.opacity : 1,
+          editable: true
         })
         canvas.value.add(text)
         break
@@ -452,14 +519,96 @@ const exportImage = () => {
   document.body.removeChild(link)
 }
 
+// Save current canvas state to history
+const saveState = () => {
+  if (!canvas.value || isHistoryAction.value) return
+  
+  try {
+    const json = JSON.stringify(canvas.value.toJSON())
+    
+    // Remove any states after current step (when user makes new changes after undo)
+    history.value = history.value.slice(0, historyStep.value + 1)
+    
+    // Add new state
+    history.value.push(json)
+    historyStep.value = history.value.length - 1
+    
+    // Limit history to last 50 states
+    if (history.value.length > 50) {
+      history.value.shift()
+      historyStep.value--
+    }
+    
+    // Emit history change to update UI buttons
+    emit('history-change', {
+      canUndo: historyStep.value > 0,
+      canRedo: historyStep.value < history.value.length - 1
+    })
+    
+    console.log('State saved, history length:', history.value.length)
+  } catch (error) {
+    console.error('Failed to save state:', error)
+  }
+}
+
 const undo = () => {
-  // TODO: Implement undo/redo with history
-  console.log('Undo')
+  if (!canvas.value || historyStep.value <= 0) {
+    console.log('Nothing to undo')
+    return
+  }
+  
+  isHistoryAction.value = true
+  historyStep.value--
+  
+  try {
+    const state = JSON.parse(history.value[historyStep.value])
+    canvas.value.loadFromJSON(state, () => {
+      canvas.value.renderAll()
+      isHistoryAction.value = false
+      
+      // Emit history change to update UI buttons
+      emit('history-change', {
+        canUndo: historyStep.value > 0,
+        canRedo: historyStep.value < history.value.length - 1
+      })
+      
+      console.log('Undo successful, step:', historyStep.value)
+      emit('canvas-modified')
+    })
+  } catch (error) {
+    console.error('Undo failed:', error)
+    isHistoryAction.value = false
+  }
 }
 
 const redo = () => {
-  // TODO: Implement undo/redo with history
-  console.log('Redo')
+  if (!canvas.value || historyStep.value >= history.value.length - 1) {
+    console.log('Nothing to redo')
+    return
+  }
+  
+  isHistoryAction.value = true
+  historyStep.value++
+  
+  try {
+    const state = JSON.parse(history.value[historyStep.value])
+    canvas.value.loadFromJSON(state, () => {
+      canvas.value.renderAll()
+      isHistoryAction.value = false
+      
+      // Emit history change to update UI buttons
+      emit('history-change', {
+        canUndo: historyStep.value > 0,
+        canRedo: historyStep.value < history.value.length - 1
+      })
+      
+      console.log('Redo successful, step:', historyStep.value)
+      emit('canvas-modified')
+    })
+  } catch (error) {
+    console.error('Redo failed:', error)
+    isHistoryAction.value = false
+  }
 }
 
 const setZoom = (zoom) => {
@@ -573,42 +722,42 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f8f9fa;
+  background: var(--color-bg-secondary);
 }
 
 .canvas-controls-top {
   position: absolute;
-  top: 1rem;
+  top: var(--space-4);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  gap: 0.5rem;
-  background: white;
-  padding: 0.5rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  gap: var(--space-2);
+  background: var(--color-bg-primary);
+  padding: var(--space-2);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
   z-index: 10;
 }
 
 .control-btn {
   width: 36px;
   height: 36px;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  background: white;
-  color: #64748b;
-  font-size: 1.2rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-light);
+  background: var(--color-bg-primary);
+  color: var(--color-text-secondary);
+  font-size: var(--text-xl);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--transition-fast);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .control-btn:hover {
-  background: #f8f9fa;
-  color: #667eea;
-  border-color: #667eea;
+  background: var(--color-bg-hover);
+  color: var(--color-brand-primary);
+  border-color: var(--color-brand-primary);
 }
 
 .canvas-container {
@@ -618,15 +767,15 @@ defineExpose({
   align-items: center;
   justify-content: center;
   overflow: auto;
-  padding: 2rem;
+  padding: var(--space-8);
 }
 
 .canvas-wrapper {
-  background: white;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  border-radius: 4px;
+  background: var(--color-bg-primary);
+  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-sm);
   transform-origin: center;
-  transition: transform 0.3s ease;
+  transition: transform var(--transition-slow) var(--ease-out);
 }
 </style>
 

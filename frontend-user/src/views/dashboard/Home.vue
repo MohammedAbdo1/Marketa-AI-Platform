@@ -119,119 +119,137 @@ onMounted(async () => {
 
 <style scoped>
 .dashboard-home {
-  animation: fadeIn 0.6s ease-out;
+  animation: fadeIn var(--duration-slow) var(--ease-out);
 }
 
 .welcome-header {
-  margin-bottom: 2rem;
+  margin-bottom: var(--space-8);
 }
 
 .welcome-header h1 {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
+  font-size: var(--text-4xl);
+  font-weight: var(--font-bold);
+  margin-bottom: var(--space-2);
+  color: var(--color-text-primary);
 }
 
 .welcome-header p {
-  color: #718096;
+  color: var(--color-text-secondary);
+  font-size: var(--text-base);
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 3rem;
+  gap: var(--space-6);
+  margin-bottom: var(--space-12);
 }
 
 .stat-card {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 12px;
+  background: var(--color-bg-primary);
+  padding: var(--space-6);
+  border-radius: var(--radius-card);
   display: flex;
   align-items: center;
-  gap: 1rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  gap: var(--space-4);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--color-border-light);
+  transition: var(--transition-all);
+}
+
+.stat-card:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-2px);
 }
 
 .stat-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 12px;
-  background: #2383E2;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  background: var(--color-brand-primary-light);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-size: 2rem;
+  color: var(--color-brand-primary);
+  font-size: var(--text-3xl);
+  flex-shrink: 0;
 }
 
 .stat-info h3 {
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin-bottom: 0.25rem;
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  margin-bottom: var(--space-1);
+  color: var(--color-text-primary);
 }
 
 .stat-info p {
-  color: #718096;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
   margin: 0;
 }
 
 .quick-actions-section,
 .recent-section {
-  margin-bottom: 3rem;
+  margin-bottom: var(--space-12);
 }
 
 .quick-actions-section h3,
 .recent-section h3 {
-  margin-bottom: 1.5rem;
-  font-size: 1.5rem;
+  margin-bottom: var(--space-6);
+  font-size: var(--text-2xl);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
 }
 
 .actions-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .action-card {
-  background: white;
-  padding: 2rem;
-  border-radius: 12px;
+  background: var(--color-bg-primary);
+  padding: var(--space-8);
+  border-radius: var(--radius-card);
   text-align: center;
   text-decoration: none;
-  color: inherit;
-  transition: all 0.3s;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  color: var(--color-text-primary);
+  transition: var(--transition-all);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--color-border-light);
 }
 
 .action-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-  color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+  color: var(--color-brand-primary);
 }
 
 .action-card i {
   font-size: 3rem;
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
   display: block;
+  color: var(--color-brand-primary);
 }
 
 .empty-state {
-  background: white;
-  padding: 4rem 2rem;
-  border-radius: 12px;
+  background: var(--color-bg-secondary);
+  padding: var(--space-16) var(--space-8);
+  border-radius: var(--radius-card);
   text-align: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  border: 1px dashed var(--color-border-medium);
 }
 
 .empty-state i {
   font-size: 4rem;
-  color: #cbd5e0;
-  margin-bottom: 1rem;
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--space-4);
 }
 
 .empty-state p {
-  color: #718096;
-  margin-bottom: 1.5rem;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-6);
 }
 </style>
 

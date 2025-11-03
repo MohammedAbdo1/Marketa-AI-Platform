@@ -89,7 +89,15 @@
     "usage": "الاستخدام والإحصائيات",
     "profile": "الملف الشخصي",
     "settings": "الإعدادات",
+    "trash": "سلة المهملات",
     "upgrade": "ترقية الباقة"
+  },
+  "userMenu": {
+    "upgrade": "ترقية الباقة",
+    "personalization": "التخصيص",
+    "settings": "الإعدادات",
+    "help": "المساعدة",
+    "logout": "تسجيل الخروج"
   },
   "labels": {
     "campaigns": "الحملات"

@@ -43,6 +43,8 @@
         @object-selected="handleObjectSelected"
         @canvas-modified="handleCanvasModified"
         @canvas-background-selected="handleCanvasBackgroundSelected"
+        @context-menu="handleContextMenu"
+        @history-change="handleHistoryChange"
       />
         
       <!-- Floating Toolbar (appears above selected object) -->
@@ -84,6 +86,15 @@
       @close="showExportModal = false"
       @export="handleExportWithOptions"
     />
+
+    <!-- Context Menu -->
+    <ContextMenu
+      :is-visible="showContextMenu"
+      :position="contextMenuPosition"
+      :selected-object="selectedObject"
+      @close="showContextMenu = false"
+      @action="handleContextMenuAction"
+    />
   </div>
 </template>
 
@@ -98,6 +109,7 @@ import EditorTopBar from '@/components/editor-v2/EditorTopBar.vue'
 import EditorLeftSidebar from '@/components/editor-v2/EditorLeftSidebar.vue'
 import MainCanvas from '@/components/editor-v2/MainCanvas.vue'
 import ObjectFloatingToolbar from '@/components/editor-v2/ObjectFloatingToolbar.vue'
+import ContextMenu from '@/components/editor-v2/ContextMenu.vue'
 import EditorRightSidebar from '@/components/editor-v2/EditorRightSidebar.vue'
 import EditorBottomBar from '@/components/editor-v2/EditorBottomBar.vue'
 import ExportModal from '@/components/editor-v2/ExportModal.vue'
@@ -130,6 +142,8 @@ const recentDesigns = ref([])
 const canUndo = ref(false)
 const canRedo = ref(false)
 const showExportModal = ref(false)
+const showContextMenu = ref(false)
+const contextMenuPosition = ref({ x: 0, y: 0 })
 
 const isRTL = computed(() => locale.value === 'ar')
 
@@ -349,6 +363,98 @@ const handleCanvasModified = () => {
   }, 2000) // Auto-save after 2 seconds of no changes
 }
 
+const handleHistoryChange = (data) => {
+  canUndo.value = data.canUndo
+  canRedo.value = data.canRedo
+}
+
+const handleContextMenu = (data) => {
+  contextMenuPosition.value = { x: data.x, y: data.y }
+  showContextMenu.value = true
+}
+
+const handleContextMenuAction = (action) => {
+  console.log('Context menu action:', action)
+  
+  switch (action) {
+    case 'copy':
+      handleCopy()
+      break
+      
+    case 'copy-style':
+      // TODO: Implement copy style
+      console.log('Copy style')
+      break
+      
+    case 'paste':
+      handlePaste()
+      break
+      
+    case 'duplicate':
+      duplicateObject()
+      break
+      
+    case 'delete':
+      deleteObject()
+      break
+      
+    case 'toggle-lock':
+      toggleLock()
+      break
+      
+    case 'align':
+      // TODO: Show alignment options
+      console.log('Align to page')
+      break
+      
+    case 'ungroup':
+      // TODO: Ungroup objects
+      console.log('Ungroup')
+      break
+      
+    case 'bring-forward':
+      canvasRef.value?.bringForward()
+      break
+      
+    case 'send-backward':
+      canvasRef.value?.sendBackward()
+      break
+      
+    case 'edit-image':
+      // TODO: Open image editor
+      console.log('Edit image')
+      break
+      
+    case 'show-timing':
+      // TODO: Show animation timing
+      console.log('Show timing')
+      break
+      
+    case 'add-comment':
+      // TODO: Add comment
+      console.log('Add comment')
+      break
+      
+    case 'alt-text':
+      // TODO: Edit alt text
+      console.log('Alt text')
+      break
+      
+    case 'translate':
+      // TODO: Translate text
+      console.log('Translate')
+      break
+      
+    case 'info':
+      // TODO: Show object info
+      console.log('Info')
+      break
+      
+    default:
+      console.log('Unknown action:', action)
+  }
+}
+
 const handlePropertyChange = (property, value) => {
   canvasRef.value?.updateObjectProperty(property, value)
 }
@@ -395,9 +501,180 @@ const handleAddPage = () => {
   canvasRef.value?.addPage()
 }
 
+// Keyboard shortcuts handler
+const handleKeyboardShortcuts = (e) => {
+  // Check if user is typing in an input field
+  const isTyping = ['INPUT', 'TEXTAREA'].includes(e.target.tagName)
+  
+  // Ctrl/Cmd key combinations
+  const ctrlKey = e.ctrlKey || e.metaKey
+  
+  // Prevent default shortcuts we handle
+  if (ctrlKey && ['z', 'y', 'c', 'x', 'v', 'd', 'a', 's', 'k'].includes(e.key.toLowerCase())) {
+    e.preventDefault()
+  }
+  
+  // Delete key
+  if (e.key === 'Delete' && !isTyping && selectedObject.value) {
+    e.preventDefault()
+    deleteObject()
+    return
+  }
+  
+  // Ctrl+Z - Undo
+  if (ctrlKey && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+    handleUndo()
+    return
+  }
+  
+  // Ctrl+Y or Ctrl+Shift+Z - Redo
+  if (ctrlKey && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) {
+    handleRedo()
+    return
+  }
+  
+  // Ctrl+C - Copy
+  if (ctrlKey && e.key.toLowerCase() === 'c' && !isTyping && selectedObject.value) {
+    handleCopy()
+    return
+  }
+  
+  // Ctrl+X - Cut
+  if (ctrlKey && e.key.toLowerCase() === 'x' && !isTyping && selectedObject.value) {
+    handleCut()
+    return
+  }
+  
+  // Ctrl+V - Paste
+  if (ctrlKey && e.key.toLowerCase() === 'v' && !isTyping) {
+    handlePaste()
+    return
+  }
+  
+  // Ctrl+D - Duplicate
+  if (ctrlKey && e.key.toLowerCase() === 'd' && !isTyping && selectedObject.value) {
+    duplicateObject()
+    return
+  }
+  
+  // Ctrl+A - Select All
+  if (ctrlKey && e.key.toLowerCase() === 'a' && !isTyping) {
+    handleSelectAll()
+    return
+  }
+  
+  // Ctrl+S - Save
+  if (ctrlKey && e.key.toLowerCase() === 's') {
+    handleSave()
+    return
+  }
+  
+  // Ctrl+] - Bring Forward
+  if (ctrlKey && e.key === ']' && !isTyping && selectedObject.value) {
+    canvasRef.value?.bringForward()
+    return
+  }
+  
+  // Ctrl+[ - Send Backward
+  if (ctrlKey && e.key === '[' && !isTyping && selectedObject.value) {
+    canvasRef.value?.sendBackward()
+    return
+  }
+  
+  // Arrow keys - Move object
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && !isTyping && selectedObject.value) {
+    e.preventDefault()
+    handleArrowMove(e.key, e.shiftKey)
+    return
+  }
+}
+
+const handleCopy = () => {
+  if (!selectedObject.value) return
+  
+  try {
+    const json = JSON.stringify(selectedObject.value.toJSON(['id', 'selectable', 'evented']))
+    localStorage.setItem('clipboard', json)
+    console.log('Object copied to clipboard')
+  } catch (error) {
+    console.error('Copy failed:', error)
+  }
+}
+
+const handleCut = () => {
+  if (!selectedObject.value) return
+  
+  handleCopy()
+  deleteObject()
+  console.log('Object cut')
+}
+
+const handlePaste = async () => {
+  try {
+    const json = localStorage.getItem('clipboard')
+    if (!json) {
+      console.log('Nothing to paste')
+      return
+    }
+    
+    const objData = JSON.parse(json)
+    
+    // Offset the pasted object
+    objData.left = (objData.left || 0) + 20
+    objData.top = (objData.top || 0) + 20
+    
+    await canvasRef.value?.addElement(objData)
+    console.log('Object pasted')
+  } catch (error) {
+    console.error('Paste failed:', error)
+  }
+}
+
+const handleSelectAll = () => {
+  if (!canvasRef.value?.canvas) return
+  
+  const canvas = canvasRef.value.canvas
+  const objects = canvas.getObjects()
+  
+  if (objects.length > 0) {
+    const fabricLib = canvas.fabric || canvas.constructor
+    const selection = new fabricLib.ActiveSelection(objects, { canvas })
+    canvas.setActiveObject(selection)
+    canvas.renderAll()
+    console.log('All objects selected')
+  }
+}
+
+const handleArrowMove = (key, shiftKey) => {
+  if (!selectedObject.value) return
+  
+  const step = shiftKey ? 10 : 1 // Shift = faster movement
+  
+  switch (key) {
+    case 'ArrowUp':
+      selectedObject.value.top -= step
+      break
+    case 'ArrowDown':
+      selectedObject.value.top += step
+      break
+    case 'ArrowLeft':
+      selectedObject.value.left -= step
+      break
+    case 'ArrowRight':
+      selectedObject.value.left += step
+      break
+  }
+  
+  canvasRef.value?.canvas.renderAll()
+  handleCanvasModified()
+}
+
 // Load design data
 onMounted(async () => {
   try {
+    // Add keyboard shortcuts listener
+    window.addEventListener('keydown', handleKeyboardShortcuts)
+    
     const uuid = route.params.uuid
     if (uuid) {
       // Fetch design from backend
@@ -475,6 +752,9 @@ watch(() => route.params.uuid, async (newUuid) => {
 
 // Cleanup
 onBeforeUnmount(() => {
+  // Remove keyboard shortcuts listener
+  window.removeEventListener('keydown', handleKeyboardShortcuts)
+  
   canvasRef.value?.dispose()
 })
 </script>
@@ -485,7 +765,7 @@ onBeforeUnmount(() => {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f8f9fa;
+  background: var(--color-bg-primary);
   overflow: hidden;
 }
 
@@ -497,11 +777,12 @@ onBeforeUnmount(() => {
 }
 
 .editor-panel-content {
-  width: 320px;
-  background: white;
-  border-right: 1px solid #e2e8f0;
+  width: var(--panel-width, 320px);
+  background: var(--color-bg-primary);
+  border-right: 1px solid var(--color-border-light);
   overflow-y: auto;
-  z-index: 100;
+  z-index: var(--z-dropdown);
+  transition: var(--transition-all);
 }
 
 .editor-canvas-area {
@@ -511,26 +792,19 @@ onBeforeUnmount(() => {
   justify-content: center;
   overflow: hidden;
   position: relative;
+  background: var(--color-bg-secondary);
 }
 
 .editor-properties-panel {
-  width: 320px;
-  background: white;
-  border-left: 1px solid #e2e8f0;
+  width: var(--panel-width, 320px);
+  background: var(--color-bg-primary);
+  border-left: 1px solid var(--color-border-light);
   overflow-y: auto;
-  z-index: 100;
+  z-index: var(--z-dropdown);
+  transition: var(--transition-all);
 }
 
-/* RTL Support */
-.rtl .editor-panel-content {
-  border-right: none;
-  border-left: 1px solid #e2e8f0;
-}
-
-.rtl .editor-properties-panel {
-  border-left: none;
-  border-right: 1px solid #e2e8f0;
-}
+/* RTL Support - Handled automatically by design system */
 
 /* Responsive */
 @media (max-width: 1024px) {
@@ -539,7 +813,7 @@ onBeforeUnmount(() => {
     right: 0;
     top: 0;
     bottom: 0;
-    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-xl);
   }
 }
 
@@ -549,7 +823,7 @@ onBeforeUnmount(() => {
     left: 60px;
     top: 0;
     bottom: 0;
-    box-shadow: 4px 0 12px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-xl);
   }
 }
 </style>

@@ -144,25 +144,30 @@ const registerWithGoogle = () => {
 
 <style scoped>
 .auth-card {
-  background: white;
-  border-radius: 16px;
-  padding: 3rem;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-12);
   max-width: 500px;
   width: 100%;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  box-shadow: var(--shadow-lg);
+  animation: fadeInUp var(--duration-slow) var(--ease-out);
 }
 
 .auth-title {
   text-align: center;
-  margin-bottom: 2rem;
-  color: #2d3748;
+  margin-bottom: var(--space-8);
+  color: var(--color-text-primary);
+  font-weight: var(--font-bold);
+  font-size: var(--text-3xl);
 }
 
 .divider {
   text-align: center;
-  margin: 1.5rem 0;
-  color: #718096;
+  margin: var(--space-6) 0;
+  color: var(--color-text-secondary);
   position: relative;
+  font-size: var(--text-sm);
 }
 
 .divider::before,
@@ -172,7 +177,7 @@ const registerWithGoogle = () => {
   top: 50%;
   width: 40%;
   height: 1px;
-  background: #e2e8f0;
+  background: var(--color-border-light);
 }
 
 .divider::before {

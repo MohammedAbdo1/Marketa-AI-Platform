@@ -1,0 +1,304 @@
+/**
+ * ═══════════════════════════════════════════════════════════
+ * MARKETA AI - ANIMATION SYSTEM
+ * Smooth Notion-Inspired Animations
+ * ═══════════════════════════════════════════════════════════
+ */
+
+:root {
+  /* ================================
+   * TIMING FUNCTIONS
+   * ================================ */
+  
+  --ease-linear: linear;
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-smooth: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  
+  /* ================================
+   * DURATION VALUES
+   * ================================ */
+  
+  --duration-instant: 100ms;
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --duration-slower: 500ms;
+  
+  /* ================================
+   * TRANSITION PRESETS
+   * ================================ */
+  
+  --transition-fast: var(--duration-fast) var(--ease-out);
+  --transition-normal: var(--duration-normal) var(--ease-out);
+  --transition-slow: var(--duration-slow) var(--ease-in-out);
+  
+  --transition-all: all var(--duration-normal) var(--ease-out);
+  --transition-colors: color var(--duration-fast) var(--ease-out),
+                       background-color var(--duration-fast) var(--ease-out),
+                       border-color var(--duration-fast) var(--ease-out);
+  --transition-transform: transform var(--duration-normal) var(--ease-out);
+  --transition-opacity: opacity var(--duration-fast) var(--ease-out);
+  --transition-shadow: box-shadow var(--duration-normal) var(--ease-out);
+}
+
+/* ================================
+ * KEYFRAME ANIMATIONS
+ * ================================ */
+
+/* Fade In */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Fade In Up */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade In Down */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide In Right */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Slide In Left */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Scale In */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Slide Up */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Pulse */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Spin */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Bounce */
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* Shimmer (Loading) */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* ================================
+ * ANIMATION UTILITY CLASSES
+ * ================================ */
+
+/* Basic Animations */
+.animate-fade-in {
+  animation: fadeIn var(--duration-normal) var(--ease-out);
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp var(--duration-normal) var(--ease-out);
+}
+
+.animate-fade-in-down {
+  animation: fadeInDown var(--duration-normal) var(--ease-out);
+}
+
+.animate-slide-in-right {
+  animation: slideInRight var(--duration-normal) var(--ease-out);
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft var(--duration-normal) var(--ease-out);
+}
+
+.animate-scale-in {
+  animation: scaleIn var(--duration-normal) var(--ease-out);
+}
+
+.animate-slide-up {
+  animation: slideUp var(--duration-normal) var(--ease-out);
+}
+
+.animate-pulse {
+  animation: pulse 2s var(--ease-in-out) infinite;
+}
+
+.animate-spin {
+  animation: spin 1s var(--ease-linear) infinite;
+}
+
+.animate-bounce {
+  animation: bounce 1s var(--ease-in-out) infinite;
+}
+
+/* Transition Utilities */
+.transition-none {
+  transition: none;
+}
+
+.transition-all {
+  transition: var(--transition-all);
+}
+
+.transition-colors {
+  transition: var(--transition-colors);
+}
+
+.transition-transform {
+  transition: var(--transition-transform);
+}
+
+.transition-opacity {
+  transition: var(--transition-opacity);
+}
+
+.transition-shadow {
+  transition: var(--transition-shadow);
+}
+
+/* Duration Utilities */
+.duration-fast {
+  transition-duration: var(--duration-fast);
+}
+
+.duration-normal {
+  transition-duration: var(--duration-normal);
+}
+
+.duration-slow {
+  transition-duration: var(--duration-slow);
+}
+
+/* ================================
+ * HOVER EFFECTS
+ * ================================ */
+
+.hover-lift {
+  transition: transform var(--duration-normal) var(--ease-out),
+              box-shadow var(--duration-normal) var(--ease-out);
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+}
+
+.hover-scale {
+  transition: transform var(--duration-normal) var(--ease-out);
+}
+
+.hover-scale:hover {
+  transform: scale(1.05);
+}
+
+.hover-grow {
+  transition: transform var(--duration-normal) var(--ease-out);
+}
+
+.hover-grow:hover {
+  transform: scale(1.02);
+}
+
+/* ================================
+ * LOADING STATES
+ * ================================ */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-tertiary) 0%,
+    var(--color-bg-hover) 50%,
+    var(--color-bg-tertiary) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.loading-dots::after {
+  content: '';
+  animation: pulse 1.5s ease-in-out infinite;
+}
+

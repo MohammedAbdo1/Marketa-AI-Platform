@@ -1,0 +1,106 @@
+/**
+ * ═══════════════════════════════════════════════════════════
+ * MARKETA AI - SHADOW SYSTEM
+ * Subtle Notion-Style Shadows
+ * ═══════════════════════════════════════════════════════════
+ */
+
+:root {
+  /* ================================
+   * SHADOW SCALE (Subtle & Soft)
+   * ================================ */
+  
+  /* Base Shadows */
+  --shadow-none: none;
+  
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06),
+               0 1px 2px rgba(0, 0, 0, 0.03);
+  
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.08),
+               0 1px 2px rgba(0, 0, 0, 0.04);
+  
+  --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.08),
+               0 2px 4px rgba(0, 0, 0, 0.04);
+  
+  --shadow-xl: 0 8px 16px rgba(0, 0, 0, 0.1),
+               0 4px 6px rgba(0, 0, 0, 0.05);
+  
+  --shadow-2xl: 0 12px 24px rgba(0, 0, 0, 0.12),
+                0 8px 12px rgba(0, 0, 0, 0.06);
+  
+  /* Inner Shadow */
+  --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+  
+  /* ================================
+   * COMPONENT-SPECIFIC SHADOWS
+   * ================================ */
+  
+  /* Cards */
+  --shadow-card: var(--shadow-sm);
+  --shadow-card-hover: var(--shadow-lg);
+  
+  /* Modals */
+  --shadow-modal: var(--shadow-2xl);
+  
+  /* Dropdowns */
+  --shadow-dropdown: 0 4px 12px rgba(0, 0, 0, 0.1),
+                     0 0 1px rgba(0, 0, 0, 0.1);
+  
+  /* Tooltips */
+  --shadow-tooltip: 0 2px 8px rgba(0, 0, 0, 0.15);
+  
+  /* Floating Elements */
+  --shadow-floating: 0 8px 24px rgba(0, 0, 0, 0.12);
+  
+  /* Buttons */
+  --shadow-button: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-button-hover: 0 2px 4px rgba(0, 0, 0, 0.1);
+  
+  /* Focus Ring */
+  --shadow-focus: 0 0 0 3px rgba(15, 123, 108, 0.1);
+  --shadow-focus-error: 0 0 0 3px rgba(224, 62, 62, 0.1);
+}
+
+/* ================================
+ * SHADOW UTILITY CLASSES
+ * ================================ */
+
+.shadow-none { box-shadow: var(--shadow-none); }
+.shadow-xs { box-shadow: var(--shadow-xs); }
+.shadow-sm { box-shadow: var(--shadow-sm); }
+.shadow-md { box-shadow: var(--shadow-md); }
+.shadow-lg { box-shadow: var(--shadow-lg); }
+.shadow-xl { box-shadow: var(--shadow-xl); }
+.shadow-2xl { box-shadow: var(--shadow-2xl); }
+.shadow-inner { box-shadow: var(--shadow-inner); }
+
+/* Component-Specific Utilities */
+.shadow-card { box-shadow: var(--shadow-card); }
+.shadow-card-hover { box-shadow: var(--shadow-card-hover); }
+.shadow-modal { box-shadow: var(--shadow-modal); }
+.shadow-dropdown { box-shadow: var(--shadow-dropdown); }
+.shadow-tooltip { box-shadow: var(--shadow-tooltip); }
+.shadow-floating { box-shadow: var(--shadow-floating); }
+
+/* Hover Shadow Transitions */
+.shadow-hover-card {
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 200ms ease;
+}
+
+.shadow-hover-card:hover {
+  box-shadow: var(--shadow-card-hover);
+}
+
+.shadow-hover-lift {
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 200ms ease, transform 200ms ease;
+}
+
+.shadow-hover-lift:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+

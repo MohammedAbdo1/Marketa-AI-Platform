@@ -1,0 +1,158 @@
+/**
+ * ═══════════════════════════════════════════════════════════
+ * MARKETA AI - COLOR SYSTEM
+ * Notion-Inspired Color Palette
+ * ═══════════════════════════════════════════════════════════
+ */
+
+:root {
+  /* ================================
+   * PRIMARY COLORS (Notion Style)
+   * ================================ */
+  
+  /* Main Text & Backgrounds */
+  --color-text-primary: #37352F;        /* Notion's main text */
+  --color-text-secondary: #787774;      /* Muted text */
+  --color-text-tertiary: #9B9A97;       /* Light text */
+  --color-text-placeholder: #C6C5C2;    /* Placeholder text */
+  
+  --color-bg-primary: #FFFFFF;          /* Main background */
+  --color-bg-secondary: #F7F6F3;        /* Secondary background */
+  --color-bg-tertiary: #ECEBE8;         /* Tertiary background */
+  --color-bg-hover: #F1F0ED;            /* Hover state */
+  
+  /* ================================
+   * BRAND COLORS (Notion Style)
+   * في Notion، الأزرار الرئيسية عادة زرقاء أو سوداء
+   * ================================ */
+  
+  /* Blue (Primary Brand - Notion's main action color) */
+  --color-brand-primary: #0B6E99;
+  --color-brand-primary-hover: #095a7d;
+  --color-brand-primary-light: #DDEBF1;
+  
+  /* Black (Alternative primary for important actions) */
+  --color-black: #000000;
+  --color-black-hover: #1a1a1a;
+  --color-black-light: #F1F1EF;
+  
+  /* ================================
+   * NOTION HIGHLIGHT COLORS
+   * للنصوص الملونة والخلفيات فقط
+   * ================================ */
+  
+  /* Gray */
+  --color-gray-text: #787774;
+  --color-gray-bg: #EBECED;
+  
+  /* Blue */
+  --color-blue-text: #0B6E99;
+  --color-blue-bg: #DDEBF1;
+  
+  /* Green/Teal */
+  --color-green-text: #0F7B6C;
+  --color-green-bg: #DDEDEA;
+  
+  /* Orange */
+  --color-orange-text: #D9730D;
+  --color-orange-bg: #FAEBDD;
+  
+  /* Red */
+  --color-red-text: #E03E3E;
+  --color-red-bg: #FBE4E4;
+  
+  /* Purple */
+  --color-purple-text: #6940A5;
+  --color-purple-bg: #EAE4F2;
+  
+  /* ================================
+   * UI ELEMENT COLORS
+   * ================================ */
+  
+  /* Borders */
+  --color-border-light: #E9E8E6;
+  --color-border-medium: #DDDBD8;
+  --color-border-dark: #C6C5C2;
+  
+  /* Sidebar (Notion Style) */
+  --color-sidebar-bg: #F7F6F3;
+  --color-sidebar-hover: #EFEEEB;
+  --color-sidebar-active: #E3E2E0;
+  --color-sidebar-text: #37352F;
+  --color-sidebar-text-muted: #787774;
+  --color-sidebar-text-active: #37352F;
+  
+  /* Editor Canvas */
+  --color-canvas-bg: #F7F6F3;
+  --color-canvas-grid: #E9E8E6;
+  
+  /* ================================
+   * SEMANTIC COLORS
+   * ================================ */
+  
+  --color-success: var(--color-green-text);
+  --color-success-bg: var(--color-green-bg);
+  --color-warning: var(--color-orange-text);
+  --color-warning-bg: var(--color-orange-bg);
+  --color-error: var(--color-red-text);
+  --color-error-bg: var(--color-red-bg);
+  --color-info: var(--color-blue-text);
+  --color-info-bg: var(--color-blue-bg);
+  
+  /* ================================
+   * INTERACTIVE STATES
+   * ================================ */
+  
+  --color-hover: #F1F0ED;
+  --color-active: #E8E7E4;
+  --color-focus: #0F7B6C;
+  --color-disabled: #C6C5C2;
+  --color-disabled-bg: #F7F6F3;
+  
+  /* ================================
+   * OVERLAY & SHADOW COLORS
+   * ================================ */
+  
+  --color-overlay: rgba(55, 53, 47, 0.4);
+  --color-overlay-dark: rgba(55, 53, 47, 0.6);
+  --color-shadow-sm: rgba(15, 15, 15, 0.05);
+  --color-shadow-md: rgba(15, 15, 15, 0.1);
+  --color-shadow-lg: rgba(15, 15, 15, 0.15);
+}
+
+/* ================================
+ * DARK MODE SUPPORT (Optional)
+ * ================================ */
+
+[data-theme="dark"] {
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #9B9A97;
+  --color-text-tertiary: #787774;
+  --color-text-placeholder: #5A5A57;
+  
+  --color-bg-primary: #191919;
+  --color-bg-secondary: #2F2F2F;
+  --color-bg-tertiary: #3F3F3F;
+  --color-bg-hover: #373737;
+  
+  --color-border-light: #3F3F3F;
+  --color-border-medium: #4A4A4A;
+  --color-border-dark: #5A5A57;
+  
+  --color-sidebar-bg: #2F2F2F;
+  --color-sidebar-hover: #373737;
+  --color-sidebar-active: #404040;
+  --color-sidebar-text: #FFFFFF;
+  --color-sidebar-text-muted: #9B9A97;
+  
+  --color-canvas-bg: #2F2F2F;
+  --color-canvas-grid: #3F3F3F;
+  
+  --color-hover: #373737;
+  --color-active: #404040;
+  --color-disabled-bg: #2F2F2F;
+  
+  --color-overlay: rgba(0, 0, 0, 0.5);
+  --color-overlay-dark: rgba(0, 0, 0, 0.7);
+}
+

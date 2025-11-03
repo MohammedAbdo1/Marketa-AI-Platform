@@ -1,0 +1,322 @@
+/**
+ * ═══════════════════════════════════════════════════════════
+ * MARKETA AI - BUTTON SYSTEM
+ * Notion-Inspired Compact Buttons
+ * ═══════════════════════════════════════════════════════════
+ */
+
+/* ================================
+ * BASE BUTTON STYLES
+ * ================================ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 32px;
+  padding: 0 var(--space-4);
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  line-height: 32px;
+  text-decoration: none;
+  text-align: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-button);
+  cursor: pointer;
+  transition: var(--transition-all);
+  white-space: nowrap;
+  user-select: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  direction: inherit;
+}
+
+/* إصلاح خاص لـ <button> مع خط Cairo */
+button.btn {
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+
+.btn:focus {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ================================
+ * BUTTON SIZES
+ * ================================ */
+
+.btn-xs {
+  height: 24px;
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+  line-height: 1.1;
+}
+
+.btn-sm {
+  height: 28px;
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+  line-height: 1.15;
+}
+
+.btn-md {
+  height: 32px;
+  padding: 0 var(--space-4);
+  font-size: var(--text-sm);
+  line-height: 1.2;
+}
+
+.btn-lg {
+  height: 40px;
+  padding: 0 var(--space-5);
+  font-size: var(--text-base);
+  line-height: 1.25;
+}
+
+/* ================================
+ * BUTTON VARIANTS
+ * ================================ */
+
+/* Primary Button */
+.btn-primary {
+  background: var(--color-brand-primary);
+  color: #FFFFFF;
+  border-color: var(--color-brand-primary);
+  box-shadow: var(--shadow-button);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-brand-primary-hover);
+  border-color: var(--color-brand-primary-hover);
+  box-shadow: var(--shadow-button-hover);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* تحسين خاص لخط Cairo العربي */
+[dir="rtl"] button.btn {
+  padding-top: 2px;
+  padding-bottom: 0;
+}
+
+/* Links تعمل بشكل صحيح، نحتاج تحسين للـ buttons فقط */
+button.btn-primary,
+button.btn-secondary,
+button.btn-danger,
+button.btn-success {
+  line-height: 30px;
+}
+
+/* Secondary Button */
+.btn-secondary {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-medium);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+  border-color: var(--color-border-dark);
+}
+
+/* Ghost Button */
+.btn-ghost {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-color: transparent;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+/* Outline Button */
+.btn-outline {
+  background: transparent;
+  color: var(--color-brand-primary);
+  border-color: var(--color-brand-primary);
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: var(--color-brand-primary-light);
+}
+
+/* Danger/Error Button */
+.btn-danger {
+  background: var(--color-error);
+  color: #FFFFFF;
+  border-color: var(--color-error);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--color-error-hover);
+  border-color: var(--color-error-hover);
+}
+
+/* Success Button */
+.btn-success {
+  background: var(--color-success);
+  color: #FFFFFF;
+  border-color: var(--color-success);
+}
+
+.btn-success:hover:not(:disabled) {
+  background: var(--color-success-hover);
+  border-color: var(--color-success-hover);
+}
+
+/* Warning Button */
+.btn-warning {
+  background: var(--color-warning);
+  color: #FFFFFF;
+  border-color: var(--color-warning);
+}
+
+.btn-warning:hover:not(:disabled) {
+  background: var(--color-warning-hover);
+  border-color: var(--color-warning-hover);
+}
+
+/* Link Button */
+.btn-link {
+  background: transparent;
+  color: var(--color-brand-primary);
+  border-color: transparent;
+  text-decoration: underline;
+  box-shadow: none;
+}
+
+.btn-link:hover:not(:disabled) {
+  color: var(--color-brand-primary-hover);
+  background: transparent;
+}
+
+/* ================================
+ * ICON BUTTONS
+ * ================================ */
+
+.btn-icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon.btn-xs {
+  width: 24px;
+  height: 24px;
+}
+
+.btn-icon.btn-sm {
+  width: 28px;
+  height: 28px;
+}
+
+.btn-icon.btn-lg {
+  width: 40px;
+  height: 40px;
+}
+
+.btn-icon i {
+  font-size: 1.125rem;
+}
+
+/* ================================
+ * BUTTON GROUPS
+ * ================================ */
+
+.btn-group {
+  display: inline-flex;
+  gap: var(--space-2);
+}
+
+.btn-group-attached {
+  display: inline-flex;
+  gap: 0;
+}
+
+.btn-group-attached .btn {
+  border-radius: 0;
+}
+
+.btn-group-attached .btn:first-child {
+  border-top-left-radius: var(--radius-button);
+  border-bottom-left-radius: var(--radius-button);
+}
+
+.btn-group-attached .btn:last-child {
+  border-top-right-radius: var(--radius-button);
+  border-bottom-right-radius: var(--radius-button);
+}
+
+.btn-group-attached .btn:not(:last-child) {
+  border-right: none;
+}
+
+/* RTL Support for Button Groups */
+[dir="rtl"] .btn-group-attached .btn:first-child {
+  border-top-right-radius: var(--radius-button);
+  border-bottom-right-radius: var(--radius-button);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+[dir="rtl"] .btn-group-attached .btn:last-child {
+  border-top-left-radius: var(--radius-button);
+  border-bottom-left-radius: var(--radius-button);
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+[dir="rtl"] .btn-group-attached .btn:not(:last-child) {
+  border-right: 1px solid;
+  border-left: none;
+}
+
+/* ================================
+ * LOADING STATE
+ * ================================ */
+
+.btn-loading {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+
+.btn-loading::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin var(--duration-slow) linear infinite;
+  color: inherit;
+  opacity: 1;
+}
+
+/* ================================
+ * BLOCK BUTTON (Full Width)
+ * ================================ */
+
+.btn-block {
+  display: flex;
+  width: 100%;
+}
+

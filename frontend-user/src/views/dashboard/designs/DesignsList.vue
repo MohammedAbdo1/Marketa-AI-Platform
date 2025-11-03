@@ -372,26 +372,31 @@ onMounted(() => {
 
 <style scoped>
 .designs-list {
-  padding: 2rem 0;
+  padding: var(--space-8) 0;
 }
 
 .nav-pills .nav-link {
-  color: #6c757d;
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  transition: var(--transition-fast);
 }
 
 .nav-pills .nav-link.active {
-  background-color: #0d6efd;
-  color: white;
+  background-color: var(--color-brand-primary);
+  color: var(--color-bg-primary);
 }
 
 .nav-pills .nav-link:hover {
-  background-color: #e9ecef;
-  color: #0d6efd;
+  background-color: var(--color-bg-hover);
+  color: var(--color-brand-primary);
 }
 
 .nav-pills .nav-link.active:hover {
-  background-color: #0b5ed7;
-  color: white;
+  background-color: var(--color-brand-primary-hover);
+  color: var(--color-bg-primary);
 }
 </style>
 

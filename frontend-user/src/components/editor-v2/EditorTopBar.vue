@@ -66,8 +66,151 @@
 
     <!-- Center Section - Object Properties (Canva Style) or Design Title -->
     <div class="top-bar-center">
-            <!-- Show Object Properties when object is selected -->
-            <div v-if="selectedObject && selectedObject.type !== 'canvas-background'" class="object-properties">
+      <!-- Show Text Properties when text is selected -->
+      <div v-if="isTextSelected" class="text-properties">
+        <!-- Font Family -->
+        <select 
+          :value="selectedObject.fontFamily || 'Cairo'" 
+          @change="updateProperty('fontFamily', $event.target.value)"
+          class="font-select"
+        >
+          <option value="Cairo">Cairo</option>
+          <option value="Tajawal">Tajawal</option>
+          <option value="Almarai">Almarai</option>
+          <option value="Amiri">Amiri</option>
+          <option value="Scheherazade">Scheherazade</option>
+          <option value="Arial">Arial</option>
+          <option value="Helvetica">Helvetica</option>
+        </select>
+
+        <div class="divider"></div>
+
+        <!-- Font Size -->
+        <button class="btn-icon" @click="changeFontSize(-2)" title="تصغير">
+          <i class='bx bx-minus'></i>
+        </button>
+        <input 
+          type="number" 
+          :value="Math.round(selectedObject.fontSize || 16)" 
+          @change="updateProperty('fontSize', parseInt($event.target.value))"
+          class="size-input"
+          min="8"
+          max="200"
+        />
+        <button class="btn-icon" @click="changeFontSize(2)" title="تكبير">
+          <i class='bx bx-plus'></i>
+        </button>
+
+        <div class="divider"></div>
+
+        <!-- Text Color -->
+        <button class="btn-icon" title="لون النص">
+          <i class='bx bx-font-color'></i>
+        </button>
+        <input 
+          type="color" 
+          :value="selectedObject.fill || '#000000'" 
+          @input="updateProperty('fill', $event.target.value)"
+          class="color-picker"
+          title="لون النص"
+        />
+
+        <div class="divider"></div>
+
+        <!-- Bold -->
+        <button 
+          class="btn-icon" 
+          :class="{ active: isBold }"
+          @click="toggleBold" 
+          title="عريض"
+        >
+          <i class='bx bx-bold'></i>
+        </button>
+
+        <!-- Italic -->
+        <button 
+          class="btn-icon" 
+          :class="{ active: isItalic }"
+          @click="toggleItalic" 
+          title="مائل"
+        >
+          <i class='bx bx-italic'></i>
+        </button>
+
+        <!-- Underline -->
+        <button 
+          class="btn-icon" 
+          :class="{ active: isUnderline }"
+          @click="toggleUnderline" 
+          title="تحته خط"
+        >
+          <i class='bx bx-underline'></i>
+        </button>
+
+        <div class="divider"></div>
+
+        <!-- Text Align -->
+        <button 
+          class="btn-icon" 
+          :class="{ active: selectedObject.textAlign === 'left' }"
+          @click="updateProperty('textAlign', 'left')" 
+          title="محاذاة لليسار"
+        >
+          <i class='bx bx-align-left'></i>
+        </button>
+        <button 
+          class="btn-icon" 
+          :class="{ active: selectedObject.textAlign === 'center' }"
+          @click="updateProperty('textAlign', 'center')" 
+          title="محاذاة للوسط"
+        >
+          <i class='bx bx-align-middle'></i>
+        </button>
+        <button 
+          class="btn-icon" 
+          :class="{ active: selectedObject.textAlign === 'right' }"
+          @click="updateProperty('textAlign', 'right')" 
+          title="محاذاة لليمين"
+        >
+          <i class='bx bx-align-right'></i>
+        </button>
+
+        <div class="divider"></div>
+
+        <!-- Letter Spacing -->
+        <button class="btn-icon" title="تباعد الأحرف">
+          <i class='bx bx-text'></i>
+        </button>
+        <input 
+          type="range" 
+          min="-50" 
+          max="500" 
+          step="10"
+          :value="selectedObject.charSpacing || 0" 
+          @input="updateProperty('charSpacing', parseInt($event.target.value))"
+          class="spacing-slider"
+        />
+
+        <div class="divider"></div>
+
+        <!-- Opacity -->
+        <button class="btn-icon" title="الشفافية">
+          <i class='bx bx-droplet'></i>
+        </button>
+        <input 
+          type="range" 
+          min="0" 
+          max="1" 
+          step="0.01" 
+          :value="selectedObject.opacity || 1" 
+          @input="updateProperty('opacity', parseFloat($event.target.value))"
+          class="opacity-slider"
+        />
+        <span class="property-value">{{ Math.round((selectedObject.opacity || 1) * 100) }}%</span>
+      </div>
+
+      <!-- Show Object Properties when non-text object is selected -->
+      <div v-else-if="selectedObject && selectedObject.type !== 'canvas-background' && !isTextSelected" class="object-properties">
         <!-- Rotation -->
         <button class="btn-icon" @click="rotateObject(-15)" title="تدوير لليسار">
           <i class='bx bx-rotate-left'></i>
@@ -169,7 +312,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 
@@ -209,6 +352,24 @@ const activeMenu = ref(null)
 const userName = authStore.user?.name || 'User'
 const userAvatar = authStore.user?.avatar || '/default-avatar.png'
 
+// Computed properties for text
+const isTextSelected = computed(() => {
+  const type = props.selectedObject?.type
+  return type === 'text' || type === 'i-text' || type === 'textbox'
+})
+
+const isBold = computed(() => {
+  return props.selectedObject?.fontWeight === 'bold' || props.selectedObject?.fontWeight >= 700
+})
+
+const isItalic = computed(() => {
+  return props.selectedObject?.fontStyle === 'italic'
+})
+
+const isUnderline = computed(() => {
+  return props.selectedObject?.underline === true
+})
+
 const toggleMenu = (menu) => {
   activeMenu.value = activeMenu.value === menu ? null : menu
 }
@@ -228,6 +389,26 @@ const rotateObject = (delta) => {
   emit('update-property', 'angle', currentAngle + delta)
 }
 
+const changeFontSize = (delta) => {
+  const currentSize = props.selectedObject?.fontSize || 16
+  const newSize = Math.max(8, Math.min(200, currentSize + delta))
+  emit('update-property', 'fontSize', newSize)
+}
+
+const toggleBold = () => {
+  const newWeight = isBold.value ? 'normal' : 'bold'
+  emit('update-property', 'fontWeight', newWeight)
+}
+
+const toggleItalic = () => {
+  const newStyle = isItalic.value ? 'normal' : 'italic'
+  emit('update-property', 'fontStyle', newStyle)
+}
+
+const toggleUnderline = () => {
+  emit('update-property', 'underline', !isUnderline.value)
+}
+
 const updateCanvasBackground = (color) => {
   if (props.selectedObject?.setBackgroundColor) {
     props.selectedObject.setBackgroundColor(color)
@@ -244,15 +425,16 @@ watch(() => props.designTitle, (newTitle) => {
 <style scoped>
 .editor-top-bar {
   height: 56px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--color-bg-primary);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 0.75rem;
-  gap: 0.4rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
-  color: white;
+  padding: 0 var(--space-3);
+  gap: var(--space-2);
+  box-shadow: var(--shadow-sm);
+  border-bottom: 1px solid var(--color-border-light);
+  z-index: var(--z-sticky);
+  color: var(--color-text-primary);
   flex-shrink: 0;
 }
 
@@ -260,7 +442,7 @@ watch(() => props.designTitle, (newTitle) => {
 .top-bar-right {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-2);
   flex-shrink: 0;
 }
 
@@ -269,29 +451,30 @@ watch(() => props.designTitle, (newTitle) => {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 0 0.5rem;
+  padding: 0 var(--space-2);
   min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
 }
 
-/* Buttons */
+/* Buttons - Notion Style */
 .btn-icon {
   background: transparent;
   border: none;
-  color: white;
-  padding: 0.4rem;
+  color: var(--color-text-secondary);
+  padding: var(--space-2);
   cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.2s;
+  border-radius: var(--radius-md);
+  transition: var(--transition-fast);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
+  font-size: var(--text-xl);
 }
 
 .btn-icon:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
 }
 
 .btn-icon:disabled {
@@ -300,90 +483,93 @@ watch(() => props.designTitle, (newTitle) => {
 }
 
 .btn-delete:hover {
-  background: rgba(239, 68, 68, 0.2) !important;
-  color: #fca5a5 !important;
+  background: var(--color-error-bg) !important;
+  color: var(--color-error) !important;
 }
 
 .btn-menu {
   background: transparent;
   border: none;
-  color: white;
-  padding: 0.4rem 0.75rem;
+  color: var(--color-text-primary);
+  padding: var(--space-2) var(--space-3);
   cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.2s;
+  border-radius: var(--radius-md);
+  transition: var(--transition-fast);
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.85rem;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
   white-space: nowrap;
 }
 
 .btn-menu:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-bg-hover);
 }
 
 .btn-primary-sm {
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
+  background: var(--color-brand-primary);
+  border: 1px solid var(--color-brand-primary);
+  color: var(--color-bg-primary);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: var(--transition-fast);
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-weight: 500;
+  gap: var(--space-2);
+  font-weight: var(--font-medium);
+  font-size: var(--text-sm);
 }
 
 .btn-primary-sm:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--color-brand-primary-hover);
 }
 
 /* Divider */
 .divider {
   width: 1px;
   height: 20px;
-  background: rgba(255, 255, 255, 0.2);
-  margin: 0 0.2rem;
+  background: var(--color-border-light);
+  margin: 0 var(--space-1);
   flex-shrink: 0;
 }
 
 /* Design Title Input */
 .design-title-input {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-size: 1rem;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-medium);
+  color: var(--color-text-primary);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
   max-width: 400px;
   width: 100%;
   text-align: center;
 }
 
 .design-title-input::placeholder {
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--color-text-placeholder);
 }
 
 .design-title-input:focus {
   outline: none;
-  border-color: rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.15);
+  border-color: var(--color-brand-primary);
+  background: var(--color-bg-primary);
+  box-shadow: var(--shadow-focus);
 }
 
-/* Object Properties (Canva Style) */
+/* Object Properties (Notion Style) */
 .object-properties {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 0.4rem 1rem;
-  border-radius: 8px;
+  gap: var(--space-2);
+  background: var(--color-bg-secondary);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
   flex-wrap: nowrap;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border-light);
   max-width: 100%;
   overflow-x: auto;
 }
@@ -391,55 +577,57 @@ watch(() => props.designTitle, (newTitle) => {
 .property-group {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .property-group label {
-  font-size: 1rem;
+  font-size: var(--text-sm);
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.12);
-  padding: 0.3rem;
-  border-radius: 4px;
+  background: transparent;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
 }
 
 .property-input {
-  background: rgba(255, 255, 255, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: white;
-  padding: 0.35rem 0.5rem;
-  border-radius: 4px;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-medium);
+  color: var(--color-text-primary);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
   width: 55px;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   text-align: center;
-  font-weight: 500;
+  font-weight: var(--font-medium);
 }
 
 .property-input:focus {
   outline: none;
-  border-color: rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.2);
+  border-color: var(--color-brand-primary);
+  box-shadow: var(--shadow-focus);
 }
 
 .property-input::placeholder {
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--color-text-placeholder);
 }
 
 .property-value {
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
   min-width: 40px;
   text-align: center;
-  background: rgba(255, 255, 255, 0.12);
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  background: var(--color-bg-tertiary);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
   white-space: nowrap;
+  color: var(--color-text-primary);
 }
 
 .property-label {
-  font-size: 0.9rem;
-  color: #2d3748;
-  font-weight: 500;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  font-weight: var(--font-medium);
 }
 
 .opacity-slider {
@@ -450,8 +638,8 @@ watch(() => props.designTitle, (newTitle) => {
 .color-picker {
   width: 32px;
   height: 32px;
-  border-radius: 4px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--color-border-medium);
   cursor: pointer;
   background: transparent;
 }
@@ -462,98 +650,116 @@ watch(() => props.designTitle, (newTitle) => {
 
 .color-picker::-webkit-color-swatch {
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
+}
+
+/* Text Properties */
+.text-properties {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  max-width: 100%;
+  border: 1px solid var(--color-border-light);
+}
+
+.font-select {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-medium);
+  color: var(--color-text-primary);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  min-width: 120px;
+}
+
+.font-select option {
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+}
+
+.size-input {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-medium);
+  color: var(--color-text-primary);
+  padding: var(--space-2) var(--space-2);
+  border-radius: var(--radius-sm);
+  width: 55px;
+  font-size: var(--text-sm);
+  text-align: center;
+  font-weight: var(--font-medium);
+}
+
+.size-input:focus {
+  outline: none;
+  border-color: var(--color-brand-primary);
+  box-shadow: var(--shadow-focus);
+}
+
+.spacing-slider {
+  width: 90px;
+  cursor: pointer;
+}
+
+.btn-icon.active {
+  background: var(--color-bg-hover);
+  color: var(--color-brand-primary);
 }
 
 /* User Profile */
 .user-profile {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   cursor: pointer;
 }
 
 .user-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
   object-fit: cover;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 1.5px solid var(--color-border-medium);
 }
 
 /* Autosave Status */
 .autosave-status {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-  opacity: 0.9;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
 }
 
 .text-success {
-  color: #4ade80;
+  color: var(--color-success);
 }
 
 .text-warning {
-  color: #fbbf24;
+  color: var(--color-warning);
 }
 
-/* Dropdown */
-.dropdown {
-  position: relative;
-}
-
-.dropdown-menu {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  margin-top: 0.5rem;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  min-width: 200px;
-  z-index: 1001;
-  display: none;
-}
-
-.dropdown-menu.show {
-  display: block;
-}
-
-.dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  background: transparent;
-  border: none;
-  color: #2d3748;
-  cursor: pointer;
-  width: 100%;
-  text-align: right;
-  transition: all 0.2s;
-  font-size: 0.9rem;
-}
-
-.dropdown-item:hover:not(:disabled) {
-  background: #f7fafc;
-}
-
-.dropdown-item:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.dropdown-divider {
-  height: 1px;
-  background: #e2e8f0;
-  margin: 0.5rem 0;
-}
+/* Dropdown - استخدام design system dropdowns */
 
 .shortcut {
   margin-right: auto;
-  font-size: 0.8rem;
-  color: #a0aec0;
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  background: var(--color-bg-tertiary);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+}
+
+[dir="rtl"] .shortcut {
+  margin-right: 0;
+  margin-left: auto;
 }
 
 /* Responsive */

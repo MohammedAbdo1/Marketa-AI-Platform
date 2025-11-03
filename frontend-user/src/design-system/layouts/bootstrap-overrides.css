@@ -1,0 +1,68 @@
+/**
+ * ═══════════════════════════════════════════════════════════
+ * MARKETA AI - BOOTSTRAP GRID OVERRIDES
+ * Fix spacing and mobile issues
+ * ═══════════════════════════════════════════════════════════
+ */
+
+/* ================================
+ * REDUCE BOOTSTRAP GUTTERS ON MOBILE
+ * ================================ */
+
+@media (max-width: 768px) {
+  .container,
+  .container-fluid,
+  .container-sm,
+  .container-md,
+  .container-lg,
+  .container-xl {
+    padding-right: var(--space-3);
+    padding-left: var(--space-3);
+    max-width: 100%;
+  }
+  
+  .row {
+    margin-right: calc(var(--space-2) * -1);
+    margin-left: calc(var(--space-2) * -1);
+  }
+  
+  .row > * {
+    padding-right: var(--space-2);
+    padding-left: var(--space-2);
+  }
+  
+  /* Gutters */
+  .g-3,
+  .gx-3 {
+    --bs-gutter-x: var(--space-2);
+  }
+  
+  .g-3,
+  .gy-3 {
+    --bs-gutter-y: var(--space-2);
+  }
+  
+  .g-4,
+  .gx-4 {
+    --bs-gutter-x: var(--space-3);
+  }
+  
+  .g-4,
+  .gy-4 {
+    --bs-gutter-y: var(--space-3);
+  }
+}
+
+/* ================================
+ * FIX OVERFLOW ON SMALL SCREENS
+ * ================================ */
+
+.row {
+  max-width: 100%;
+}
+
+.col,
+[class*="col-"] {
+  min-width: 0;
+}
+

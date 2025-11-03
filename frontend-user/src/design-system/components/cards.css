@@ -1,0 +1,263 @@
+/**
+ * ═══════════════════════════════════════════════════════════
+ * MARKETA AI - CARD SYSTEM
+ * Notion-Inspired Cards
+ * ═══════════════════════════════════════════════════════════
+ */
+
+/* ================================
+ * BASE CARD STYLES
+ * ================================ */
+
+.card {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
+  transition: var(--transition-all);
+  box-shadow: var(--shadow-card);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-2px);
+}
+
+/* Card without hover effect */
+.card-static {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-card);
+}
+
+/* ================================
+ * CARD SECTIONS
+ * ================================ */
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.card-title {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.card-subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin-top: var(--space-1);
+}
+
+.card-body {
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+}
+
+.card-footer {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-light);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ================================
+ * CARD VARIANTS
+ * ================================ */
+
+/* Outlined Card */
+.card-outlined {
+  background: transparent;
+  border: 1px solid var(--color-border-medium);
+  box-shadow: none;
+}
+
+.card-outlined:hover {
+  border-color: var(--color-border-dark);
+  background: var(--color-bg-secondary);
+}
+
+/* Elevated Card */
+.card-elevated {
+  border: none;
+  box-shadow: var(--shadow-lg);
+}
+
+.card-elevated:hover {
+  box-shadow: var(--shadow-xl);
+}
+
+/* Flat Card */
+.card-flat {
+  background: var(--color-bg-secondary);
+  border: none;
+  box-shadow: none;
+}
+
+.card-flat:hover {
+  background: var(--color-bg-hover);
+}
+
+/* Interactive Card */
+.card-interactive {
+  cursor: pointer;
+  user-select: none;
+}
+
+.card-interactive:active {
+  transform: scale(0.98);
+}
+
+/* ================================
+ * CARD SIZES
+ * ================================ */
+
+.card-sm {
+  padding: var(--space-3);
+}
+
+.card-lg {
+  padding: var(--space-6);
+}
+
+/* ================================
+ * CARD WITH IMAGE
+ * ================================ */
+
+.card-img-top {
+  width: 100%;
+  border-top-left-radius: var(--radius-card);
+  border-top-right-radius: var(--radius-card);
+  margin: calc(var(--space-4) * -1) calc(var(--space-4) * -1) var(--space-4);
+}
+
+.card-img-bottom {
+  width: 100%;
+  border-bottom-left-radius: var(--radius-card);
+  border-bottom-right-radius: var(--radius-card);
+  margin: var(--space-4) calc(var(--space-4) * -1) calc(var(--space-4) * -1);
+}
+
+.card-img-overlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-card);
+  background: rgba(0, 0, 0, 0.4);
+  color: white;
+}
+
+/* ================================
+ * STAT CARD
+ * ================================ */
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-brand-primary-light);
+  color: var(--color-brand-primary);
+  border-radius: var(--radius-lg);
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.stat-content h3 {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-1) 0;
+}
+
+.stat-content p {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* ================================
+ * GRID LAYOUT FOR CARDS
+ * ================================ */
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+.card-grid-sm {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-3);
+}
+
+.card-grid-lg {
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-6);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .card-grid,
+  .card-grid-sm,
+  .card-grid-lg {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ================================
+ * EMPTY STATE CARD
+ * ================================ */
+
+.card-empty {
+  padding: var(--space-12) var(--space-6);
+  text-align: center;
+  background: var(--color-bg-secondary);
+  border: 1px dashed var(--color-border-medium);
+}
+
+.card-empty i {
+  font-size: 3rem;
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--space-4);
+}
+
+.card-empty h3 {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.card-empty p {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-4);
+}
+

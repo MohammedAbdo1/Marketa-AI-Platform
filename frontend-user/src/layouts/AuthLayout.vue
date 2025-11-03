@@ -26,19 +26,19 @@ const { t } = useI18n()
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  /* background: #1a1a1a; */
+  background: var(--color-bg-primary);
 }
 
 .auth-header {
-  padding: 2rem;
+  padding: var(--space-8);
   text-align: center;
 }
 
 .auth-header .logo {
   text-decoration: none;
-  color: white;
-  font-size: 2rem;
-  font-weight: bold;
+  color: var(--color-text-primary);
+  font-size: var(--text-4xl);
+  font-weight: var(--font-bold);
 }
 
 .auth-content {
@@ -46,18 +46,14 @@ const { t } = useI18n()
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: var(--space-8);
 }
 
 .auth-footer {
-  padding: 1.5rem;
+  padding: var(--space-6);
   text-align: center;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 0.875rem;
-}
-.form-control {
-  font-size: 0.875rem;
-  height: 3px !important;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
 }
 </style>
 

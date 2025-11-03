@@ -148,19 +148,20 @@ const onImageError = (event) => {
 
 <style scoped>
 .design-card {
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: var(--transition-all);
   cursor: pointer;
+  border: 1px solid var(--color-border-light);
 }
 
 .design-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .card-img-wrapper {
   aspect-ratio: 1;
   overflow: hidden;
-  background: #f8f9fa;
+  background: var(--color-bg-secondary);
 }
 
 .card-img-top {
@@ -175,22 +176,25 @@ const onImageError = (event) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-tertiary);
 }
 
 .card-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  margin-bottom: var(--space-2);
+  color: var(--color-text-primary);
 }
 
 .card-meta {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
 }
 
 .badge {
-  font-size: 0.7rem;
-  padding: 0.25rem 0.5rem;
+  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-2);
 }
 
 .dropdown-toggle::after {

@@ -68,15 +68,16 @@ onUnmounted(() => {
   top: 0;
   left: 0;
   right: 0;
-  z-index: 1000;
+  z-index: var(--z-fixed);
   background: transparent;
-  transition: all 0.3s ease;
-  padding: 1rem 0;
+  transition: var(--transition-slow);
+  padding: var(--space-4) 0;
 }
 
 .public-header.scrolled {
-  background: white;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  background: var(--color-bg-primary);
+  box-shadow: var(--shadow-md);
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 .navbar {
@@ -87,74 +88,71 @@ onUnmounted(() => {
 
 .logo {
   text-decoration: none;
-  color: inherit;
-  font-size: 1.5rem;
-  font-weight: bold;
+  color: var(--color-text-primary);
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
 }
 
 .nav-menu {
   display: flex;
-  gap: 2rem;
+  gap: var(--space-8);
   align-items: center;
 }
 
 .nav-link {
   text-decoration: none;
-  color: inherit;
-  font-weight: 500;
-  transition: color 0.3s;
+  color: var(--color-text-primary);
+  font-weight: var(--font-medium);
+  font-size: var(--text-sm);
+  transition: var(--transition-fast);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
 }
 
 .nav-link:hover {
-  color: #2383E2;
+  color: var(--color-brand-primary);
+  background: var(--color-bg-hover);
 }
 
 .nav-actions {
   display: flex;
-  gap: 1rem;
+  gap: var(--space-3);
   align-items: center;
 }
 
-.btn {
-  padding: 0.5rem 1.5rem;
-  border-radius: 8px;
-  text-decoration: none;
-  font-weight: 500;
-  transition: all 0.3s;
-  border: none;
-  cursor: pointer;
-}
-
-.btn-outline {
-  background: transparent;
-  border: 2px solid currentColor;
-  color: inherit;
-}
-
-.btn-primary {
-  background: #2383E2;
-  color: white;
-}
-
-.btn-primary:hover {
-  background: #1a6bbf;
-}
-
+/* زر اللغة فقط (باقي الأزرار من Design System) */
 .btn-language {
-  padding: 0.5rem 1rem;
-  border: 1px solid #dee2e6;
-  border-radius: 6px;
-  background: white;
+  height: 32px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border-medium);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
   cursor: pointer;
-  font-weight: 500;
+  transition: var(--transition-fast);
+}
+
+.btn-language:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-brand-primary);
+  color: var(--color-brand-primary);
 }
 
 .btn-menu {
   display: none;
   background: none;
   border: none;
-  font-size: 1.5rem;
+  font-size: var(--text-2xl);
+  color: var(--color-text-primary);
   cursor: pointer;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+}
+
+.btn-menu:hover {
+  background: var(--color-bg-hover);
 }
 
 /* Mobile */
@@ -174,9 +172,10 @@ onUnmounted(() => {
     top: 100%;
     left: 0;
     right: 0;
-    background: white;
-    padding: 1rem;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    background: var(--color-bg-primary);
+    padding: var(--space-4);
+    box-shadow: var(--shadow-lg);
+    border-bottom: 1px solid var(--color-border-light);
   }
 }
 </style>

@@ -1,0 +1,540 @@
+# MARKETA AI - Design System Rules for Cursor AI
+
+## Overview
+This project uses a custom **Notion-inspired Design System** with full RTL support for Arabic. All styles are centralized in `/frontend-user/src/design-system/`.
+
+## Core Principles
+
+### 1. NEVER Write Inline Styles
+❌ **DON'T:**
+```vue
+<button style="padding: 12px; background: #0F7B6C;">Save</button>
+```
+
+✅ **DO:**
+```vue
+<button class="btn btn-primary">Save</button>
+```
+
+### 2. Use Design System Classes
+All styling should use predefined classes from the design system.
+
+### 3. RTL Support is Mandatory
+Always consider Arabic (RTL) users. The system automatically handles RTL.
+
+---
+
+## Color System
+
+### Available Colors (100% Notion Colors)
+```css
+/* Text (Notion Exact) */
+--color-text-primary: #37352F     /* Notion's default text */
+--color-text-secondary: #787774   /* Muted text */
+--color-text-tertiary: #9B9A97    /* Light text */
+
+/* Background (Notion Exact) */
+--color-bg-primary: #FFFFFF       /* Main content background */
+--color-bg-secondary: #F7F6F3     /* Sidebar & secondary areas */
+--color-bg-tertiary: #ECEBE8      /* Tertiary */
+
+/* Brand (Notion Style) */
+--color-brand-primary: #0B6E99    /* Blue - Notion's primary action color */
+--color-black: #000000            /* Alternative for important actions */
+
+/* Notion Highlight Colors (للنصوص الملونة فقط) */
+--color-blue-text: #0B6E99        /* خلفية: #DDEBF1 */
+--color-green-text: #0F7B6C       /* خلفية: #DDEDEA */
+--color-orange-text: #D9730D      /* خلفية: #FAEBDD */
+--color-red-text: #E03E3E         /* خلفية: #FBE4E4 */
+--color-purple-text: #6940A5      /* خلفية: #EAE4F2 */
+```
+
+### Usage
+```vue
+<!-- Text colors -->
+<p class="text-primary">Main text</p>
+<p class="text-secondary">Secondary text</p>
+<span class="text-brand">Brand text</span>
+
+<!-- Background colors -->
+<div class="bg-primary">White background</div>
+<div class="bg-secondary">Light gray background</div>
+```
+
+---
+
+## Button System
+
+### Button Variants
+```vue
+<!-- Primary Button (main actions) -->
+<button class="btn btn-primary">Save</button>
+
+<!-- Secondary Button -->
+<button class="btn btn-secondary">Cancel</button>
+
+<!-- Ghost Button (subtle) -->
+<button class="btn btn-ghost">More</button>
+
+<!-- Danger Button -->
+<button class="btn btn-danger">Delete</button>
+
+<!-- Icon Button -->
+<button class="btn-icon btn-ghost">
+  <i class="bx bx-search"></i>
+</button>
+```
+
+### Button Sizes
+```vue
+<button class="btn btn-xs btn-primary">Extra Small</button>
+<button class="btn btn-sm btn-primary">Small</button>
+<button class="btn btn-md btn-primary">Medium (default)</button>
+<button class="btn btn-lg btn-primary">Large</button>
+```
+
+### Button States
+```vue
+<!-- Disabled -->
+<button class="btn btn-primary" disabled>Disabled</button>
+
+<!-- Loading -->
+<button class="btn btn-primary btn-loading">Loading...</button>
+```
+
+---
+
+## Form System
+
+### Input Fields
+```vue
+<div class="form-group">
+  <label class="form-label form-label-required">Email</label>
+  <input type="email" class="form-control" placeholder="Enter email">
+  <span class="form-hint">We'll never share your email</span>
+</div>
+```
+
+### Input Sizes
+```vue
+<input class="form-control form-control-sm" placeholder="Small">
+<input class="form-control" placeholder="Default">
+<input class="form-control form-control-lg" placeholder="Large">
+```
+
+### Validation States
+```vue
+<!-- Error State -->
+<input class="form-control is-invalid" value="invalid@">
+<span class="invalid-feedback">Please enter a valid email</span>
+
+<!-- Success State -->
+<input class="form-control is-valid" value="valid@example.com">
+<span class="valid-feedback">Looks good!</span>
+```
+
+### Checkbox & Radio
+```vue
+<div class="form-check">
+  <input type="checkbox" class="form-check-input" id="check1">
+  <label class="form-check-label" for="check1">Remember me</label>
+</div>
+
+<!-- Switch Toggle -->
+<div class="form-check form-switch">
+  <input type="checkbox" class="form-check-input" id="switch1">
+  <label class="form-check-label" for="switch1">Enable notifications</label>
+</div>
+```
+
+---
+
+## Card System
+
+### Basic Card
+```vue
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">Card Title</h3>
+  </div>
+  <div class="card-body">
+    <p>Card content goes here</p>
+  </div>
+  <div class="card-footer">
+    <button class="btn btn-primary">Action</button>
+  </div>
+</div>
+```
+
+### Card Variants
+```vue
+<!-- Static Card (no hover) -->
+<div class="card-static">Content</div>
+
+<!-- Interactive Card -->
+<div class="card card-interactive">Clickable</div>
+
+<!-- Flat Card -->
+<div class="card-flat">Flat style</div>
+```
+
+### Stat Card
+```vue
+<div class="stat-card">
+  <div class="stat-icon">
+    <i class="bx bx-user"></i>
+  </div>
+  <div class="stat-content">
+    <h3>1,234</h3>
+    <p>Total Users</p>
+  </div>
+</div>
+```
+
+---
+
+## Typography
+
+### Font Sizes (Notion-style compact)
+```vue
+<p class="text-xs">Extra small (11px)</p>
+<p class="text-sm">Small (13px)</p>
+<p class="text-base">Base (14px) - default</p>
+<p class="text-md">Medium (15px)</p>
+<p class="text-lg">Large (16px)</p>
+<p class="text-xl">Extra large (18px)</p>
+<p class="text-2xl">2XL (22px)</p>
+```
+
+### Font Weights
+```vue
+<p class="font-normal">Normal (400)</p>
+<p class="font-medium">Medium (500)</p>
+<p class="font-semibold">Semibold (600)</p>
+<p class="font-bold">Bold (700)</p>
+```
+
+### Text Colors
+```vue
+<p class="text-primary">Primary color</p>
+<p class="text-secondary">Secondary color</p>
+<p class="text-tertiary">Tertiary color</p>
+<p class="text-brand">Brand color</p>
+<p class="text-error">Error color</p>
+```
+
+---
+
+## Spacing System
+
+### Margin & Padding (4px base)
+```vue
+<!-- Margin -->
+<div class="m-0">No margin</div>
+<div class="m-1">4px margin</div>
+<div class="m-2">8px margin</div>
+<div class="m-3">12px margin</div>
+<div class="m-4">16px margin</div>
+<div class="m-6">24px margin</div>
+
+<!-- Directional -->
+<div class="mt-4">Margin top 16px</div>
+<div class="mb-4">Margin bottom 16px</div>
+<div class="ml-4">Margin left 16px</div>
+<div class="mr-4">Margin right 16px</div>
+
+<!-- Axis -->
+<div class="mx-4">Margin horizontal 16px</div>
+<div class="my-4">Margin vertical 16px</div>
+
+<!-- Same applies for padding (p-*, pt-*, pb-*, etc.) -->
+```
+
+### Gap (for Flexbox/Grid)
+```vue
+<div class="d-flex gap-2">
+  <button>Button 1</button>
+  <button>Button 2</button>
+</div>
+
+<div class="d-flex gap-4">
+  <div>Item 1</div>
+  <div>Item 2</div>
+</div>
+```
+
+---
+
+## Layout Utilities
+
+### Display
+```vue
+<div class="d-none">Hidden</div>
+<div class="d-block">Block</div>
+<div class="d-flex">Flex</div>
+<div class="d-grid">Grid</div>
+```
+
+### Flexbox
+```vue
+<!-- Direction -->
+<div class="d-flex flex-row">Row</div>
+<div class="d-flex flex-column">Column</div>
+
+<!-- Alignment -->
+<div class="d-flex items-center justify-between">
+  <span>Left</span>
+  <span>Right</span>
+</div>
+
+<!-- Gap -->
+<div class="d-flex gap-4">
+  <div>Item 1</div>
+  <div>Item 2</div>
+</div>
+```
+
+---
+
+## RTL Support
+
+### Automatic Flipping
+The system automatically handles RTL. **Never** write directional styles manually.
+
+❌ **DON'T:**
+```css
+margin-left: 20px; /* This won't flip in RTL */
+```
+
+✅ **DO:**
+```vue
+<div class="ml-4">Content</div> <!-- Auto-flips to mr-4 in RTL -->
+```
+
+### Sidebar Positioning
+Sidebars automatically position correctly based on language:
+- **English (LTR)**: Sidebar on left
+- **Arabic (RTL)**: Sidebar on right
+
+```vue
+<!-- This sidebar will auto-position -->
+<aside class="dashboard-sidebar">
+  <!-- Content -->
+</aside>
+```
+
+---
+
+## Modals
+
+### Basic Modal
+```vue
+<div class="modal-backdrop" v-if="showModal"></div>
+<div class="modal" v-if="showModal">
+  <div class="modal-header">
+    <h3 class="modal-title">Modal Title</h3>
+    <button class="modal-close" @click="showModal = false">
+      <i class="bx bx-x"></i>
+    </button>
+  </div>
+  <div class="modal-body">
+    <p>Modal content goes here</p>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-secondary" @click="showModal = false">Cancel</button>
+    <button class="btn btn-primary">Confirm</button>
+  </div>
+</div>
+```
+
+### Modal Sizes
+```vue
+<div class="modal modal-sm">Small</div>
+<div class="modal">Default (md)</div>
+<div class="modal modal-lg">Large</div>
+<div class="modal modal-xl">Extra Large</div>
+```
+
+---
+
+## Dropdowns
+
+### Basic Dropdown
+```vue
+<div class="dropdown">
+  <button class="btn btn-secondary" @click="showDropdown = !showDropdown">
+    Menu
+  </button>
+  <div class="dropdown-menu" :class="{ show: showDropdown }">
+    <button class="dropdown-item">
+      <i class="bx bx-user"></i>
+      Profile
+    </button>
+    <button class="dropdown-item">
+      <i class="bx bx-cog"></i>
+      Settings
+    </button>
+    <div class="dropdown-divider"></div>
+    <button class="dropdown-item dropdown-item-danger">
+      <i class="bx bx-log-out"></i>
+      Logout
+    </button>
+  </div>
+</div>
+```
+
+---
+
+## Badges
+
+```vue
+<span class="badge badge-primary">Primary</span>
+<span class="badge badge-success">Success</span>
+<span class="badge badge-warning">Warning</span>
+<span class="badge badge-error">Error</span>
+
+<!-- With dot -->
+<span class="badge badge-success badge-dot">Active</span>
+
+<!-- Sizes -->
+<span class="badge badge-sm badge-primary">Small</span>
+<span class="badge badge-lg badge-primary">Large</span>
+```
+
+---
+
+## Animations
+
+### Built-in Animations
+```vue
+<!-- Fade In -->
+<div class="animate-fade-in">Content</div>
+
+<!-- Slide Up -->
+<div class="animate-slide-up">Content</div>
+
+<!-- Scale In -->
+<div class="animate-scale-in">Content</div>
+```
+
+### Hover Effects
+```vue
+<!-- Lift on hover -->
+<div class="card hover-lift">Card</div>
+
+<!-- Scale on hover -->
+<button class="btn hover-scale">Button</button>
+```
+
+---
+
+## Responsive Design
+
+### Breakpoints
+- **Mobile**: < 768px
+- **Tablet**: 768px - 1024px
+- **Desktop**: > 1024px
+
+### Hide/Show
+```vue
+<!-- Hide on mobile -->
+<div class="hide-mobile">Desktop only</div>
+
+<!-- Show on mobile only -->
+<div class="show-mobile">Mobile only</div>
+
+<!-- Responsive flex direction -->
+<div class="d-flex flex-col-mobile">
+  <!-- Column on mobile, row on desktop -->
+</div>
+```
+
+---
+
+## Best Practices
+
+### 1. Component Structure
+```vue
+<template>
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title text-lg font-semibold">Title</h3>
+    </div>
+    <div class="card-body">
+      <p class="text-secondary mb-4">Content</p>
+      <button class="btn btn-primary">Action</button>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+/* Only component-specific styles that can't be achieved with classes */
+.custom-gradient {
+  background: linear-gradient(to right, var(--color-brand-primary), var(--color-blue));
+}
+</style>
+```
+
+### 2. Consistency
+- Use `btn` classes for all buttons
+- Use `form-control` for all inputs
+- Use `card` for all card containers
+- Use spacing utilities (`m-*`, `p-*`, `gap-*`) instead of custom margins/paddings
+
+### 3. Accessibility
+- Always include labels for form inputs
+- Use semantic HTML
+- Provide `aria-label` for icon-only buttons
+
+```vue
+<button class="btn-icon" aria-label="Close">
+  <i class="bx bx-x"></i>
+</button>
+```
+
+---
+
+## Migration Guide
+
+### When updating existing components:
+
+1. **Remove inline styles**
+   - Replace with design system classes
+
+2. **Update button classes**
+   ```vue
+   <!-- Before -->
+   <button style="background: #0F7B6C; padding: 8px 16px;">Save</button>
+   
+   <!-- After -->
+   <button class="btn btn-primary">Save</button>
+   ```
+
+3. **Update form inputs**
+   ```vue
+   <!-- Before -->
+   <input style="padding: 8px; border: 1px solid #ddd;">
+   
+   <!-- After -->
+   <input class="form-control">
+   ```
+
+4. **Use spacing utilities**
+   ```vue
+   <!-- Before -->
+   <div style="margin-top: 20px; margin-bottom: 20px;">
+   
+   <!-- After -->
+   <div class="my-5">
+   ```
+
+---
+
+## Need Help?
+
+Refer to:
+- `/frontend-user/src/design-system/` for source code
+- `DESIGN_SYSTEM.md` for detailed documentation
+- Component examples in the design system files
+

@@ -6,9 +6,8 @@ import App from './App.vue'
 import router from './router'
 import i18n from './i18n'
 
-// Bootstrap CSS
-import 'bootstrap/dist/css/bootstrap.min.css'
-import 'bootstrap/dist/js/bootstrap.bundle.min.js'
+// Bootstrap Grid Only (for layout system)
+import 'bootstrap/dist/css/bootstrap-grid.min.css'
 
 // Boxicons
 import 'boxicons/css/boxicons.min.css'
@@ -16,7 +15,10 @@ import 'boxicons/css/boxicons.min.css'
 // Toast CSS
 import 'vue-toastification/dist/index.css'
 
-// Custom CSS
+// Design System (Main - controls everything)
+import './design-system/index.css'
+
+// Legacy CSS (for backward compatibility - will be removed gradually)
 import './assets/main.css'
 import './styles/editor.css'
 

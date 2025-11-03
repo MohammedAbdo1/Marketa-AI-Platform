@@ -1,0 +1,203 @@
+/**
+ * ═══════════════════════════════════════════════════════════
+ * MARKETA AI - UTILITY HELPERS
+ * Common Helper Classes
+ * ═══════════════════════════════════════════════════════════
+ */
+
+/* ================================
+ * DISPLAY UTILITIES
+ * ================================ */
+
+.d-none { display: none; }
+.d-block { display: block; }
+.d-inline { display: inline; }
+.d-inline-block { display: inline-block; }
+.d-flex { display: flex; }
+.d-inline-flex { display: inline-flex; }
+.d-grid { display: grid; }
+
+/* ================================
+ * FLEXBOX UTILITIES
+ * ================================ */
+
+/* Direction */
+.flex-row { flex-direction: row; }
+.flex-row-reverse { flex-direction: row-reverse; }
+.flex-column { flex-direction: column; }
+.flex-column-reverse { flex-direction: column-reverse; }
+
+/* Wrap */
+.flex-wrap { flex-wrap: wrap; }
+.flex-nowrap { flex-wrap: nowrap; }
+
+/* Align Items */
+.items-start { align-items: flex-start; }
+.items-center { align-items: center; }
+.items-end { align-items: flex-end; }
+.items-baseline { align-items: baseline; }
+.items-stretch { align-items: stretch; }
+
+/* Justify Content */
+.justify-start { justify-content: flex-start; }
+.justify-center { justify-content: center; }
+.justify-end { justify-content: flex-end; }
+.justify-between { justify-content: space-between; }
+.justify-around { justify-content: space-around; }
+.justify-evenly { justify-content: space-evenly; }
+
+/* Align Self */
+.self-auto { align-self: auto; }
+.self-start { align-self: flex-start; }
+.self-center { align-self: center; }
+.self-end { align-self: flex-end; }
+.self-stretch { align-self: stretch; }
+
+/* Flex Grow/Shrink */
+.flex-1 { flex: 1 1 0%; }
+.flex-auto { flex: 1 1 auto; }
+.flex-none { flex: none; }
+.flex-grow { flex-grow: 1; }
+.flex-shrink { flex-shrink: 1; }
+
+/* ================================
+ * POSITION UTILITIES
+ * ================================ */
+
+.position-static { position: static; }
+.position-relative { position: relative; }
+.position-absolute { position: absolute; }
+.position-fixed { position: fixed; }
+.position-sticky { position: sticky; }
+
+/* ================================
+ * OVERFLOW UTILITIES
+ * ================================ */
+
+.overflow-auto { overflow: auto; }
+.overflow-hidden { overflow: hidden; }
+.overflow-visible { overflow: visible; }
+.overflow-scroll { overflow: scroll; }
+
+.overflow-x-auto { overflow-x: auto; }
+.overflow-x-hidden { overflow-x: hidden; }
+.overflow-y-auto { overflow-y: auto; }
+.overflow-y-hidden { overflow-y: hidden; }
+
+/* ================================
+ * SIZING UTILITIES
+ * ================================ */
+
+.w-auto { width: auto; }
+.w-full { width: 100%; }
+.w-screen { width: 100vw; }
+.w-50 { width: 50%; }
+.w-25 { width: 25%; }
+.w-75 { width: 75%; }
+
+.h-auto { height: auto; }
+.h-full { height: 100%; }
+.h-screen { height: 100vh; }
+.h-50 { height: 50%; }
+
+.min-w-0 { min-width: 0; }
+.min-h-0 { min-height: 0; }
+.max-w-full { max-width: 100%; }
+.max-h-full { max-height: 100%; }
+
+/* ================================
+ * OPACITY UTILITIES
+ * ================================ */
+
+.opacity-0 { opacity: 0; }
+.opacity-25 { opacity: 0.25; }
+.opacity-50 { opacity: 0.5; }
+.opacity-75 { opacity: 0.75; }
+.opacity-100 { opacity: 1; }
+
+/* ================================
+ * VISIBILITY UTILITIES
+ * ================================ */
+
+.visible { visibility: visible; }
+.invisible { visibility: hidden; }
+
+/* ================================
+ * CURSOR UTILITIES
+ * ================================ */
+
+.cursor-auto { cursor: auto; }
+.cursor-pointer { cursor: pointer; }
+.cursor-not-allowed { cursor: not-allowed; }
+.cursor-move { cursor: move; }
+
+/* ================================
+ * USER SELECT UTILITIES
+ * ================================ */
+
+.select-none { user-select: none; }
+.select-text { user-select: text; }
+.select-all { user-select: all; }
+
+/* ================================
+ * POINTER EVENTS UTILITIES
+ * ================================ */
+
+.pointer-events-none { pointer-events: none; }
+.pointer-events-auto { pointer-events: auto; }
+
+/* ================================
+ * BORDER UTILITIES
+ * ================================ */
+
+.border { border: 1px solid var(--color-border-medium); }
+.border-0 { border: 0; }
+.border-t { border-top: 1px solid var(--color-border-medium); }
+.border-b { border-bottom: 1px solid var(--color-border-medium); }
+.border-l { border-left: 1px solid var(--color-border-medium); }
+.border-r { border-right: 1px solid var(--color-border-medium); }
+
+/* ================================
+ * BACKGROUND UTILITIES
+ * ================================ */
+
+.bg-primary { background-color: var(--color-bg-primary); }
+.bg-secondary { background-color: var(--color-bg-secondary); }
+.bg-tertiary { background-color: var(--color-bg-tertiary); }
+.bg-transparent { background-color: transparent; }
+
+/* ================================
+ * LIST UTILITIES
+ * ================================ */
+
+.list-none { list-style: none; }
+.list-disc { list-style: disc; }
+.list-decimal { list-style: decimal; }
+
+/* ================================
+ * OBJECT FIT UTILITIES
+ * ================================ */
+
+.object-contain { object-fit: contain; }
+.object-cover { object-fit: cover; }
+.object-fill { object-fit: fill; }
+.object-none { object-fit: none; }
+
+/* ================================
+ * WHITESPACE UTILITIES
+ * ================================ */
+
+.whitespace-normal { white-space: normal; }
+.whitespace-nowrap { white-space: nowrap; }
+.whitespace-pre { white-space: pre; }
+.whitespace-pre-wrap { white-space: pre-wrap; }
+
+/* ================================
+ * VERTICAL ALIGN UTILITIES
+ * ================================ */
+
+.align-baseline { vertical-align: baseline; }
+.align-top { vertical-align: top; }
+.align-middle { vertical-align: middle; }
+.align-bottom { vertical-align: bottom; }
+

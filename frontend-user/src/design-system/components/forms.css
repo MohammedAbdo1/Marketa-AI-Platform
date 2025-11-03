@@ -1,0 +1,413 @@
+/**
+ * ═══════════════════════════════════════════════════════════
+ * MARKETA AI - FORM SYSTEM
+ * Notion-Inspired Compact Forms
+ * ═══════════════════════════════════════════════════════════
+ */
+
+/* ================================
+ * FORM GROUP
+ * ================================ */
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+/* ================================
+ * FORM LABELS
+ * ================================ */
+
+.form-label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-1);
+}
+
+.form-label-required::after {
+  content: " *";
+  color: var(--color-error);
+}
+
+.form-label-optional {
+  font-weight: var(--font-normal);
+  color: var(--color-text-tertiary);
+}
+
+.form-label-optional::after {
+  content: " (optional)";
+  font-size: var(--text-xs);
+}
+
+[dir="rtl"] .form-label-optional::after {
+  content: " (اختياري)";
+}
+
+/* ================================
+ * TEXT INPUTS
+ * ================================ */
+
+.form-control {
+  height: 32px;
+  padding: 0 var(--space-3);
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-medium);
+  border-radius: var(--radius-input);
+  transition: var(--transition-all);
+  width: 100%;
+}
+
+.form-control::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+.form-control:hover:not(:disabled):not(:focus) {
+  border-color: var(--color-border-dark);
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--color-brand-primary);
+  box-shadow: var(--shadow-focus);
+}
+
+.form-control:disabled {
+  background: var(--color-disabled-bg);
+  color: var(--color-disabled);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Input Sizes */
+.form-control-xs {
+  height: 24px;
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.form-control-sm {
+  height: 28px;
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.form-control-lg {
+  height: 40px;
+  padding: 0 var(--space-4);
+  font-size: var(--text-base);
+}
+
+/* ================================
+ * TEXTAREA
+ * ================================ */
+
+textarea.form-control {
+  height: auto;
+  min-height: 80px;
+  padding: var(--space-3);
+  resize: vertical;
+  line-height: var(--leading-normal);
+}
+
+textarea.form-control-sm {
+  min-height: 60px;
+  padding: var(--space-2);
+}
+
+textarea.form-control-lg {
+  min-height: 120px;
+  padding: var(--space-4);
+}
+
+/* ================================
+ * SELECT DROPDOWNS
+ * ================================ */
+
+.form-select {
+  height: 32px;
+  padding: 0 var(--space-6) 0 var(--space-3);
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary) url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23787774' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e") no-repeat right var(--space-3) center/12px 12px;
+  border: 1px solid var(--color-border-medium);
+  border-radius: var(--radius-input);
+  transition: var(--transition-all);
+  cursor: pointer;
+  appearance: none;
+}
+
+[dir="rtl"] .form-select {
+  padding: 0 var(--space-3) 0 var(--space-6);
+  background-position: left var(--space-3) center;
+}
+
+.form-select:hover:not(:disabled) {
+  border-color: var(--color-border-dark);
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: var(--color-brand-primary);
+  box-shadow: var(--shadow-focus);
+}
+
+.form-select:disabled {
+  background-color: var(--color-disabled-bg);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ================================
+ * CHECKBOX & RADIO
+ * ================================ */
+
+.form-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.form-check-input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  background-color: var(--color-bg-primary);
+  border: 1.5px solid var(--color-border-dark);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: var(--transition-all);
+  flex-shrink: 0;
+}
+
+.form-check-input:hover {
+  border-color: var(--color-brand-primary);
+}
+
+.form-check-input:checked {
+  background-color: var(--color-brand-primary);
+  border-color: var(--color-brand-primary);
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='white' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M4 8l2 2 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 12px;
+}
+
+.form-check-input:focus {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* Radio Button */
+.form-check-input[type="radio"] {
+  border-radius: 50%;
+}
+
+.form-check-input[type="radio"]:checked {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3ccircle cx='8' cy='8' r='4' fill='white'/%3e%3c/svg%3e");
+}
+
+.form-check-label {
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* ================================
+ * SWITCH TOGGLE
+ * ================================ */
+
+.form-switch .form-check-input {
+  width: 36px;
+  height: 20px;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='rgba(0,0,0,0.25)'/%3e%3c/svg%3e");
+  background-position: left center;
+  background-size: contain;
+  border-radius: 20px;
+  transition: background-position var(--duration-fast) ease;
+}
+
+.form-switch .form-check-input:checked {
+  background-position: right center;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='white'/%3e%3c/svg%3e");
+}
+
+/* ================================
+ * INPUT GROUPS
+ * ================================ */
+
+.input-group {
+  display: flex;
+  width: 100%;
+}
+
+.input-group .form-control {
+  border-radius: 0;
+}
+
+.input-group .form-control:first-child {
+  border-top-left-radius: var(--radius-input);
+  border-bottom-left-radius: var(--radius-input);
+}
+
+.input-group .form-control:last-child {
+  border-top-right-radius: var(--radius-input);
+  border-bottom-right-radius: var(--radius-input);
+}
+
+.input-group-text {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-medium);
+  white-space: nowrap;
+}
+
+.input-group-text:first-child {
+  border-top-left-radius: var(--radius-input);
+  border-bottom-left-radius: var(--radius-input);
+  border-right: none;
+}
+
+.input-group-text:last-child {
+  border-top-right-radius: var(--radius-input);
+  border-bottom-right-radius: var(--radius-input);
+  border-left: none;
+}
+
+/* RTL Support */
+[dir="rtl"] .input-group .form-control:first-child {
+  border-top-right-radius: var(--radius-input);
+  border-bottom-right-radius: var(--radius-input);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+[dir="rtl"] .input-group .form-control:last-child {
+  border-top-left-radius: var(--radius-input);
+  border-bottom-left-radius: var(--radius-input);
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* ================================
+ * FORM VALIDATION STATES
+ * ================================ */
+
+/* Error State */
+.form-control.is-invalid,
+.form-control:invalid {
+  border-color: var(--color-error);
+}
+
+.form-control.is-invalid:focus,
+.form-control:invalid:focus {
+  box-shadow: var(--shadow-focus-error);
+}
+
+.invalid-feedback {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-error);
+  margin-top: var(--space-1);
+}
+
+.invalid-feedback i {
+  font-size: var(--text-sm);
+  margin-right: var(--space-1);
+}
+
+[dir="rtl"] .invalid-feedback i {
+  margin-right: 0;
+  margin-left: var(--space-1);
+}
+
+/* Success State */
+.form-control.is-valid {
+  border-color: var(--color-success);
+}
+
+.valid-feedback {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-success);
+  margin-top: var(--space-1);
+}
+
+/* ================================
+ * FORM HINTS
+ * ================================ */
+
+.form-hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  margin-top: var(--space-1);
+}
+
+/* ================================
+ * FILE INPUT
+ * ================================ */
+
+.form-file-input {
+  display: block;
+  width: 100%;
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  background: var(--color-bg-secondary);
+  border: 1px dashed var(--color-border-dark);
+  border-radius: var(--radius-input);
+  cursor: pointer;
+  transition: var(--transition-all);
+  text-align: center;
+}
+
+.form-file-input:hover {
+  border-color: var(--color-brand-primary);
+  background: var(--color-brand-primary-light);
+}
+
+/* ================================
+ * SEARCH INPUT
+ * ================================ */
+
+.form-search {
+  position: relative;
+}
+
+.form-search .form-control {
+  padding-left: var(--space-8);
+  padding-right: var(--space-3);
+}
+
+[dir="rtl"] .form-search .form-control {
+  padding-right: var(--space-8);
+  padding-left: var(--space-3);
+}
+
+.form-search-icon {
+  position: absolute;
+  left: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+}
+
+[dir="rtl"] .form-search-icon {
+  left: auto;
+  right: var(--space-3);
+}
+

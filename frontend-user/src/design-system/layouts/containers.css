@@ -1,0 +1,81 @@
+/**
+ * ═══════════════════════════════════════════════════════════
+ * MARKETA AI - CONTAINER SYSTEM
+ * Page Containers & Layouts
+ * ═══════════════════════════════════════════════════════════
+ */
+
+/* ================================
+ * CONTAINER WIDTHS
+ * ================================ */
+
+.container-full {
+  width: 100%;
+  padding-right: var(--container-padding-md);
+  padding-left: var(--container-padding-md);
+}
+
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin-right: auto;
+  margin-left: auto;
+  padding-right: var(--container-padding-md);
+  padding-left: var(--container-padding-md);
+}
+
+.container-narrow {
+  width: 100%;
+  max-width: 900px;
+  margin-right: auto;
+  margin-left: auto;
+  padding-right: var(--container-padding-md);
+  padding-left: var(--container-padding-md);
+}
+
+.container-wide {
+  width: 100%;
+  max-width: 1400px;
+  margin-right: auto;
+  margin-left: auto;
+  padding-right: var(--container-padding-md);
+  padding-left: var(--container-padding-md);
+}
+
+/* ================================
+ * RESPONSIVE CONTAINERS (ChatGPT Style)
+ * ================================ */
+
+/* Mobile - padding أصغر */
+@media (max-width: 640px) {
+  .container,
+  .container-narrow,
+  .container-wide,
+  .container-full {
+    padding-right: var(--space-3);
+    padding-left: var(--space-3);
+    max-width: 100%;
+  }
+}
+
+/* Tablet */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .container,
+  .container-narrow,
+  .container-wide,
+  .container-full {
+    padding-right: var(--space-6);
+    padding-left: var(--space-6);
+  }
+}
+
+/* Desktop Large */
+@media (min-width: 1400px) {
+  .container,
+  .container-narrow,
+  .container-wide {
+    padding-right: var(--container-padding-lg);
+    padding-left: var(--container-padding-lg);
+  }
+}
+

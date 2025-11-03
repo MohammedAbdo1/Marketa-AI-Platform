@@ -83,11 +83,21 @@
   "sidebar": {
     "dashboard": "Dashboard",
     "campaigns": "Campaigns",
+    "designs": "Designs",
+    "ai_studio": "AI Studio",
     "brands": "Brand Identity",
     "usage": "Usage & Stats",
     "profile": "Profile",
     "settings": "Settings",
+    "trash": "Trash",
     "upgrade": "Upgrade Plan"
+  },
+  "userMenu": {
+    "upgrade": "Upgrade plan",
+    "personalization": "Personalization",
+    "settings": "Settings",
+    "help": "Help",
+    "logout": "Log out"
   },
   "labels": {
     "campaigns": "Campaigns"

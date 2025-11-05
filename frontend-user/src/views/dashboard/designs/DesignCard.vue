@@ -1,119 +1,208 @@
 <template>
-  <div class="design-card card h-100" @click="$emit('edit', design)">
-    <!-- Thumbnail -->
-    <div class="card-img-wrapper position-relative">
-      <img 
-        v-if="design.thumbnail_url || design.export_url" 
-        :src="design.thumbnail_url || design.export_url" 
-        class="card-img-top" 
-        :alt="design.title || 'Design'"
-        @error="onImageError"
-      >
-      <div v-else class="card-img-placeholder">
-        <i class="bi bi-image display-4 text-muted"></i>
-      </div>
-      
-      <!-- Badges -->
-      <div class="position-absolute top-0 start-0 p-2">
-        <span v-if="design.is_template" class="badge bg-warning">
-          <i class="bi bi-bookmark-fill"></i>
-          Template
-        </span>
-        <span 
-          v-if="design.source_type === 'ai'" 
-          class="badge bg-primary ms-1"
-        >
-          <i class="bi bi-stars"></i>
-          AI
-        </span>
-      </div>
+  <div 
+    class="design-card" 
+    @click="$emit('edit', design)"
+    @mouseenter="showActions = true"
+    @mouseleave="showActions = false"
+  >
+    <!-- Thumbnail - Live Canvas Preview ONLY -->
+    <div class="card-thumbnail">
+      <CanvasPreview
+        :composition-data="design.composition_data || {}"
+        :width="design.width || 1080"
+        :height="design.height || 1080"
+        :scale="0.25"
+      />
 
-      <!-- Actions Dropdown -->
-      <div class="position-absolute top-0 end-0 p-2">
-        <div class="dropdown">
-          <button 
-            class="btn btn-sm btn-light rounded-circle" 
-            type="button" 
-            data-bs-toggle="dropdown"
-            @click.stop
-          >
-            <i class="bi bi-three-dots-vertical"></i>
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end">
-            <li>
-              <a class="dropdown-item" href="#" @click.prevent.stop="$emit('edit', design)">
-                <i class="bi bi-pencil me-2"></i>
-                {{ $t('common.edit') }}
-              </a>
-            </li>
-            <li>
-              <a class="dropdown-item" href="#" @click.prevent.stop="$emit('duplicate', design)">
-                <i class="bi bi-files me-2"></i>
-                {{ $t('common.duplicate') }}
-              </a>
-            </li>
-            <li>
-              <a class="dropdown-item" href="#" @click.prevent.stop="$emit('add-to-campaign', design)">
-                <i class="bi bi-plus-circle me-2"></i>
-                {{ $t('designs.add_to_campaign') }}
-              </a>
-            </li>
-            <li><hr class="dropdown-divider"></li>
-            <li>
-              <a class="dropdown-item text-danger" href="#" @click.prevent.stop="$emit('delete', design)">
-                <i class="bi bi-trash me-2"></i>
-                {{ $t('common.delete') }}
-              </a>
-            </li>
-          </ul>
-        </div>
+      <!-- Card Actions (Star + Three-dots) -->
+      <!-- النجمة ظاهرة دائماً للمفضلة، Three-dots تظهر عند Hover -->
+      <div class="card-actions">
+        <button 
+          v-show="design.is_favorited || showActions || contextMenuOpen"
+          class="btn-icon btn-star" 
+          :class="{ active: design.is_favorited, loading: isFavoriting }"
+          @click.stop="toggleFavorite"
+          :aria-label="design.is_favorited ? $t('designs.unfavorite') : $t('common.favorite')"
+          :disabled="isFavoriting"
+        >
+          <i v-if="!isFavoriting" :class="design.is_favorited ? 'bxs-star' : 'bx-star'" class="bx"></i>
+          <i v-else class="bx bx-loader-alt bx-spin"></i>
+        </button>
+        <button 
+          v-show="showActions || contextMenuOpen"
+          class="btn-icon" 
+          @click.stop="openContextMenu"
+          :aria-label="$t('common.more')"
+        >
+          <i class="bx bx-dots-horizontal-rounded"></i>
+        </button>
       </div>
     </div>
 
     <!-- Card Body -->
     <div class="card-body">
-      <h6 class="card-title text-truncate">
-        {{ design.title || 'Untitled Design' }}
-      </h6>
+      <InlineEditableName
+        v-model="design.title"
+        :placeholder="$t('designs.create_first')"
+        @save="updateTitle"
+      />
       
-      <!-- Meta info -->
-      <div class="card-meta small text-muted d-flex justify-content-between">
-        <span>
-          <i class="bi bi-calendar me-1"></i>
-          {{ formatDate(design.created_at) }}
-        </span>
-        <span v-if="design.used_count > 0">
-          <i class="bi bi-arrow-repeat me-1"></i>
-          {{ design.used_count }}
-        </span>
-      </div>
-
-      <!-- Design type -->
-      <div class="mt-2">
-        <span class="badge bg-light text-dark">
-          {{ formatDesignType(design.design_type) }}
-        </span>
-        <span v-if="design.width && design.height" class="badge bg-light text-dark ms-1">
-          {{ design.width }}×{{ design.height }}
+      <div class="card-meta">
+        <span class="design-type">{{ formatDesignType(design.design_type) }}</span>
+        <span class="last-modified">
+          <i class="bx bx-time-five"></i>
+          {{ formatDate(design.updated_at) }}
         </span>
       </div>
     </div>
+
+    <!-- Context Menu -->
+    <DesignContextMenu
+      v-if="contextMenuOpen"
+      :design="design"
+      :show-unfavorite="showUnfavorite"
+      :position="menuPosition"
+      @action="handleAction"
+      @close="contextMenuOpen = false"
+    />
   </div>
 </template>
 
 <script setup>
-import { defineProps, defineEmits } from 'vue'
+import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useDesignStore } from '@/stores/design'
+import { useToast } from '@/composables/useToast'
+import InlineEditableName from '@/components/designs/InlineEditableName.vue'
+import DesignContextMenu from '@/components/designs/DesignContextMenu.vue'
+import CanvasPreview from '@/components/designs/CanvasPreview.vue'
 
 const props = defineProps({
   design: {
     type: Object,
     required: true
+  },
+  showUnfavorite: {
+    type: Boolean,
+    default: false
+  },
+  disabled: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['edit', 'duplicate', 'delete', 'add-to-campaign'])
+const emit = defineEmits(['edit', 'duplicate', 'delete', 'add-to-campaign', 'unfavorite', 'refresh'])
+
 const { t } = useI18n()
+const designStore = useDesignStore()
+const { success, error } = useToast()
+
+const showActions = ref(false)
+const contextMenuOpen = ref(false)
+const menuPosition = ref({ x: 0, y: 0 })
+const isFavoriting = ref(false)
+
+const toggleFavorite = async () => {
+  if (props.disabled || isFavoriting.value) return
+  
+  // Optimistic UI Update - تحديث فوري!
+  const previousState = props.design.is_favorited
+  props.design.is_favorited = !previousState
+  
+  isFavoriting.value = true
+  
+  try {
+    await designStore.toggleFavorite(props.design.id, previousState)
+    
+    // Show success notification (مثل Canva)
+    if (props.design.is_favorited) {
+      success(t('designs.added_to_favorites'), 1500)
+    } else {
+      success(t('designs.removed_from_favorites'), 1500)
+    }
+    
+    if (props.design.is_favorited && props.showUnfavorite) {
+      emit('unfavorite', props.design)
+    }
+  } catch (err) {
+    // Revert optimistic update on error
+    props.design.is_favorited = previousState
+    error(t('designs.favorite_error'), 2000)
+    console.error('Failed to toggle favorite:', err)
+  } finally {
+    isFavoriting.value = false
+  }
+}
+
+const openContextMenu = (event) => {
+  if (props.disabled) return
+  
+  const rect = event.target.getBoundingClientRect()
+  menuPosition.value = {
+    x: rect.right - 220, // 220px is menu width
+    y: rect.bottom + 8
+  }
+  contextMenuOpen.value = true
+}
+
+const updateTitle = async (newTitle) => {
+  try {
+    await designStore.updateDesignTitle(props.design.uuid, newTitle)
+  } catch (error) {
+    console.error('Failed to update title:', error)
+  }
+}
+
+const handleAction = async ({ action, design }) => {
+  switch (action) {
+    case 'open-new-tab':
+      window.open(`/editor/${design.uuid}`, '_blank')
+      break
+      
+    case 'details':
+      // TODO: Show design details modal
+      console.log('Show details for:', design)
+      break
+      
+    case 'rename':
+      // Trigger inline edit (already handled by InlineEditableName)
+      break
+      
+    case 'duplicate':
+      emit('duplicate', design)
+      break
+      
+    case 'download':
+      // TODO: Download design
+      console.log('Download design:', design)
+      break
+      
+    case 'share':
+      // TODO: Share design
+      console.log('Share design:', design)
+      break
+      
+    case 'copy-link':
+      // TODO: Copy link to clipboard
+      const link = `${window.location.origin}/editor/${design.uuid}`
+      navigator.clipboard.writeText(link)
+      break
+      
+    case 'add-to-campaign':
+      emit('add-to-campaign', design)
+      break
+      
+    case 'unfavorite':
+      await toggleFavorite()
+      emit('unfavorite', design)
+      break
+      
+    case 'move-to-trash':
+      emit('delete', design)
+      break
+  }
+}
 
 const formatDate = (dateString) => {
   if (!dateString) return ''
@@ -139,66 +228,8 @@ const formatDesignType = (type) => {
   }
   return types[type] || type
 }
-
-const onImageError = (event) => {
-  event.target.style.display = 'none'
-  event.target.parentElement.querySelector('.card-img-placeholder')?.classList.remove('d-none')
-}
 </script>
 
 <style scoped>
-.design-card {
-  transition: var(--transition-all);
-  cursor: pointer;
-  border: 1px solid var(--color-border-light);
-}
-
-.design-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-card-hover);
-}
-
-.card-img-wrapper {
-  aspect-ratio: 1;
-  overflow: hidden;
-  background: var(--color-bg-secondary);
-}
-
-.card-img-top {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.card-img-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-bg-secondary);
-  color: var(--color-text-tertiary);
-}
-
-.card-title {
-  font-size: var(--text-sm);
-  font-weight: var(--font-semibold);
-  margin-bottom: var(--space-2);
-  color: var(--color-text-primary);
-}
-
-.card-meta {
-  font-size: var(--text-xs);
-  color: var(--color-text-secondary);
-}
-
-.badge {
-  font-size: var(--text-xs);
-  padding: var(--space-1) var(--space-2);
-}
-
-.dropdown-toggle::after {
-  display: none;
-}
+/* All styles are in design-cards.css */
 </style>
-

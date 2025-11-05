@@ -76,6 +76,15 @@
                   {{ $t('designs.filters.templates') }}
                 </a>
               </li>
+              <li class="nav-item">
+                <router-link 
+                  to="/dashboard/designs/favorites"
+                  class="nav-link"
+                >
+                  <i class="bi bi-star me-1"></i>
+                  {{ $t('designs.favorites') }}
+                </router-link>
+              </li>
             </ul>
           </div>
 
@@ -142,13 +151,11 @@
     </div>
 
     <!-- Designs Grid -->
-    <div v-else-if="designs && designs.length > 0" class="row g-4">
-      <div 
-        v-for="design in designs" 
-        :key="design.uuid" 
-        class="col-12 col-sm-6 col-md-4 col-lg-3"
-      >
+    <div v-else-if="designs && designs.length > 0">
+      <div class="designs-grid">
         <DesignCard 
+          v-for="design in designs" 
+          :key="design.uuid"
           :design="design" 
           @edit="editDesign"
           @duplicate="duplicateDesign"
@@ -156,34 +163,16 @@
           @add-to-campaign="addToCampaign"
         />
       </div>
-    </div>
 
-    <!-- Pagination -->
-    <div v-if="pagination.last_page > 1" class="d-flex justify-content-center mt-4">
-      <nav>
-        <ul class="pagination">
-          <li class="page-item" :class="{ disabled: pagination.current_page === 1 }">
-            <a class="page-link" href="#" @click.prevent="goToPage(pagination.current_page - 1)">
-              <i class="bi bi-chevron-left"></i>
-            </a>
-          </li>
-          <li 
-            v-for="page in paginationPages" 
-            :key="page" 
-            class="page-item"
-            :class="{ active: page === pagination.current_page }"
-          >
-            <a class="page-link" href="#" @click.prevent="goToPage(page)">
-              {{ page }}
-            </a>
-          </li>
-          <li class="page-item" :class="{ disabled: pagination.current_page === pagination.last_page }">
-            <a class="page-link" href="#" @click.prevent="goToPage(pagination.current_page + 1)">
-              <i class="bi bi-chevron-right"></i>
-            </a>
-          </li>
-        </ul>
-      </nav>
+      <!-- Load More Trigger (Intersection Observer) -->
+      <div ref="loadMoreTrigger" class="loading-indicator">
+        <div v-if="loadingMore" class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p v-if="!hasMore && designs.length > 0" class="text-muted">
+          {{ $t('common.no_more_results') }}
+        </p>
+      </div>
     </div>
 
     <!-- Delete Confirmation Modal -->
@@ -222,7 +211,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDesignStore } from '@/stores/design'
 import { useI18n } from 'vue-i18n'
@@ -239,31 +228,17 @@ const sortBy = ref('created_at')
 const deleteModalVisible = ref(false)
 const designToDelete = ref(null)
 const deleting = ref(false)
+const loadMoreTrigger = ref(null)
+const loadingMore = ref(false)
+const currentPage = ref(1)
+const hasMore = ref(true)
+const observer = ref(null)
 
 // Computed
 const designs = computed(() => designStore.designs || [])
 const loading = computed(() => designStore.loading)
 const error = computed(() => designStore.error)
 const pagination = computed(() => designStore.pagination || { current_page: 1, last_page: 1, per_page: 20, total: 0 })
-
-const paginationPages = computed(() => {
-  const pages = []
-  const current = pagination.value.current_page
-  const last = pagination.value.last_page
-  
-  // Always show first page
-  pages.push(1)
-  
-  // Show pages around current
-  for (let i = Math.max(2, current - 1); i <= Math.min(last - 1, current + 1); i++) {
-    if (!pages.includes(i)) pages.push(i)
-  }
-  
-  // Show last page
-  if (last > 1 && !pages.includes(last)) pages.push(last)
-  
-  return pages
-})
 
 // Methods
 const setFilter = (filter) => {
@@ -301,17 +276,47 @@ const debouncedSearch = () => {
   }, 500)
 }
 
-const loadDesigns = async (page = 1) => {
+const loadDesigns = async (page = 1, append = false) => {
   try {
-    await designStore.fetchDesigns(page)
+    const response = await designStore.fetchDesigns(page)
+    
+    if (append) {
+      // Append to existing designs
+      designStore.designs = [...designStore.designs, ...response.data]
+    }
+    
+    // Update hasMore flag
+    hasMore.value = response.current_page < response.last_page
+    currentPage.value = response.current_page
   } catch (err) {
     console.error('Failed to load designs:', err)
   }
 }
 
-const goToPage = (page) => {
-  if (page >= 1 && page <= pagination.value.last_page) {
-    loadDesigns(page)
+const loadMore = async () => {
+  if (loadingMore.value || !hasMore.value || loading.value) return
+  
+  loadingMore.value = true
+  try {
+    await loadDesigns(currentPage.value + 1, true)
+  } finally {
+    loadingMore.value = false
+  }
+}
+
+// Setup Intersection Observer
+const setupObserver = () => {
+  observer.value = new IntersectionObserver(
+    (entries) => {
+      if (entries[0].isIntersecting) {
+        loadMore()
+      }
+    },
+    { threshold: 0.5 }
+  )
+  
+  if (loadMoreTrigger.value) {
+    observer.value.observe(loadMoreTrigger.value)
   }
 }
 
@@ -349,10 +354,11 @@ const deleteDesign = async () => {
   
   deleting.value = true
   try {
-    await designStore.deleteDesign(designToDelete.value.uuid)
+    // Move to trash instead of permanent delete
+    await designStore.moveToTrash(designToDelete.value.uuid)
     cancelDelete()
   } catch (err) {
-    console.error('Failed to delete design:', err)
+    console.error('Failed to move to trash:', err)
     alert(t('designs.delete.error'))
   } finally {
     deleting.value = false
@@ -365,8 +371,19 @@ const addToCampaign = (design) => {
 }
 
 // Lifecycle
-onMounted(() => {
-  loadDesigns()
+onMounted(async () => {
+  await loadDesigns()
+  
+  // Setup observer after initial load
+  setTimeout(() => {
+    setupObserver()
+  }, 100)
+})
+
+onUnmounted(() => {
+  if (observer.value) {
+    observer.value.disconnect()
+  }
 })
 </script>
 

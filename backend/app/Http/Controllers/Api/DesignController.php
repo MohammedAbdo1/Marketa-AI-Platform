@@ -16,7 +16,16 @@ class DesignController extends Controller
     public function index(Request $request)
     {
         $query = Design::ownedBy(Auth::id())
-                      ->with('user:id,name,email');
+                      ->notTrashed()
+                      ->with('user:id,name,email')
+                      ->select([
+                          'id', 'uuid', 'user_id', 'title', 'description',
+                          'design_type', 'source_type', 'composition_data',
+                          'thumbnail_url', 'export_url', 'width', 'height',
+                          'canvas_settings', 'metadata', 'is_template',
+                          'is_public', 'views_count', 'used_count',
+                          'created_at', 'updated_at'
+                      ]);
 
         // Filters
         if ($request->has('type')) {
@@ -47,7 +56,14 @@ class DesignController extends Controller
 
         // Paginate
         $perPage = $request->get('per_page', 20);
-        $designs = $query->paginate($perPage);
+        $page = $request->get('page', 1);
+        $designs = $query->paginate($perPage, ['*'], 'page', $page);
+
+        // Add is_favorited flag and ensure composition_data is included
+        $designs->getCollection()->transform(function ($design) {
+            $design->is_favorited = $design->isFavoritedBy(Auth::id());
+            return $design;
+        });
 
         return response()->json($designs);
     }
@@ -256,6 +272,116 @@ class DesignController extends Controller
         return response()->json([
             'message' => 'Design converted to template successfully',
             'design' => $design
+        ]);
+    }
+
+    /**
+     * Update design title only
+     */
+    public function updateTitle(Request $request, $uuid)
+    {
+        $design = Design::where('uuid', $uuid)->firstOrFail();
+
+        // Check ownership
+        if ($design->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $design->title = $request->title;
+        $design->save();
+
+        return response()->json([
+            'message' => 'Title updated successfully',
+            'design' => $design
+        ]);
+    }
+
+    /**
+     * Get trashed designs
+     */
+    public function trashed(Request $request)
+    {
+        $query = Design::ownedBy(Auth::id())
+                      ->trashed()
+                      ->with('user:id,name,email');
+
+        // Sort by trashed_at desc
+        $query->orderBy('trashed_at', 'desc');
+
+        // Paginate
+        $perPage = $request->get('per_page', 20);
+        $designs = $query->paginate($perPage);
+
+        return response()->json($designs);
+    }
+
+    /**
+     * Move design to trash
+     */
+    public function moveToTrash($uuid)
+    {
+        $design = Design::where('uuid', $uuid)->firstOrFail();
+
+        // Check ownership
+        if ($design->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $design->moveToTrash();
+
+        return response()->json([
+            'message' => 'Design moved to trash successfully',
+            'design' => $design
+        ]);
+    }
+
+    /**
+     * Restore design from trash
+     */
+    public function restore($uuid)
+    {
+        $design = Design::where('uuid', $uuid)->firstOrFail();
+
+        // Check ownership
+        if ($design->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $design->restoreFromTrash();
+
+        return response()->json([
+            'message' => 'Design restored successfully',
+            'design' => $design
+        ]);
+    }
+
+    /**
+     * Force delete design permanently
+     */
+    public function forceDelete($uuid)
+    {
+        $design = Design::where('uuid', $uuid)->firstOrFail();
+
+        // Check ownership
+        if ($design->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $design->forceDelete();
+
+        return response()->json([
+            'message' => 'Design permanently deleted'
         ]);
     }
 

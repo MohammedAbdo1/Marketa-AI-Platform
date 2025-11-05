@@ -26,6 +26,11 @@
         <i class="bx bx-layer"></i>
         <span>{{ $t('sidebar.designs') }}</span>
       </router-link>
+
+      <router-link to="/dashboard/designs/favorites" class="nav-item" :title="$t('designs.favorites')">
+        <i class="bx bx-star"></i>
+        <span>{{ $t('designs.favorites') }}</span>
+      </router-link>
       
       <router-link to="/dashboard/ai" class="nav-item" :title="$t('sidebar.ai_studio')">
         <i class="bx bx-sparkle"></i>

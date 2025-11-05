@@ -343,6 +343,125 @@ export const useDesignStore = defineStore('design', {
     },
 
     /**
+     * Update design title only
+     */
+    async updateDesignTitle(uuid, title) {
+      try {
+        const response = await axios.patch(`/designs/${uuid}/title`, { title })
+        
+        // Update in list
+        const index = this.designs.findIndex(d => d.uuid === uuid)
+        if (index !== -1) {
+          this.designs[index].title = title
+        }
+        
+        // Update current if it's the same
+        if (this.currentDesign?.uuid === uuid) {
+          this.currentDesign.title = title
+        }
+
+        return response.data.design
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Failed to update title'
+        throw error
+      }
+    },
+
+    /**
+     * Move design to trash
+     */
+    async moveToTrash(uuid) {
+      try {
+        const response = await axios.post(`/designs/${uuid}/trash`)
+        
+        // Remove from designs list
+        this.designs = this.designs.filter(d => d.uuid !== uuid)
+        
+        // Clear current if trashed
+        if (this.currentDesign?.uuid === uuid) {
+          this.currentDesign = null
+        }
+
+        return response.data
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Failed to move to trash'
+        throw error
+      }
+    },
+
+    /**
+     * Restore design from trash
+     */
+    async restoreDesign(uuid) {
+      try {
+        const response = await axios.post(`/designs/${uuid}/restore`)
+        return response.data.design
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Failed to restore design'
+        throw error
+      }
+    },
+
+    /**
+     * Force delete design permanently
+     */
+    async forceDeleteDesign(uuid) {
+      try {
+        await axios.delete(`/designs/${uuid}/force`)
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Failed to delete permanently'
+        throw error
+      }
+    },
+
+    /**
+     * Fetch trashed designs
+     */
+    async fetchTrashedDesigns(page = 1) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const response = await axios.get('/designs/trash', {
+          params: { page, per_page: this.pagination.per_page }
+        })
+        
+        return response.data
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Failed to fetch trash'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    /**
+     * Toggle favorite status
+     */
+    async toggleFavorite(designId, isFavorited, sectionId = null) {
+      try {
+        if (isFavorited) {
+          // Remove from favorites
+          await axios.delete(`/favorites/${designId}`)
+        } else {
+          // Add to favorites
+          await axios.post('/favorites', { design_id: designId, section_id: sectionId })
+        }
+
+        // Update in designs list
+        const design = this.designs.find(d => d.id === designId)
+        if (design) {
+          design.is_favorited = !isFavorited
+        }
+
+        return !isFavorited
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Failed to toggle favorite'
+        throw error
+      }
+    },
+
+    /**
      * Clear error
      */
     clearError() {

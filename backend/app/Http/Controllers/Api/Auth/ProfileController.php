@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Services\UserService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class ProfileController extends Controller
 {
@@ -17,12 +18,46 @@ class ProfileController extends Controller
     }
 
     /**
-     * Get user profile
+     * Get minimal user info (fast, no relationships)
+     * Used for authentication checks and UI display
+     */
+    public function me(Request $request)
+    {
+        $user = $request->user();
+        
+        return response()->json([
+            'user' => [
+                'uuid' => $user->uuid,
+                'name' => $user->name,
+                'email' => $user->email,
+                'avatar' => $user->avatar,
+                'status' => $user->status,
+            ],
+        ]);
+    }
+
+    /**
+     * Get user profile (full with relationships)
+     * Used for profile page with complete information
+     * Cached for 5 minutes for performance
      */
     public function show(Request $request)
     {
+        $userId = $request->user()->id;
+        $cacheKey = "user_profile_{$userId}";
+        
+        // Cache the profile for 5 minutes (300 seconds)
+        $user = Cache::remember($cacheKey, 300, function () use ($request) {
+            return $request->user()->load([
+                'roles',
+                'permissions',
+                'organization',
+                'activeSubscription.plan'
+            ]);
+        });
+        
         return response()->json([
-            'user' => new UserResource($request->user()->load(['roles', 'permissions', 'organization', 'activeSubscription.plan'])),
+            'user' => new UserResource($user),
         ]);
     }
 
@@ -41,6 +76,10 @@ class ProfileController extends Controller
 
         try {
             $user = $this->userService->updateUser($request->user()->uuid, $validated);
+            
+            // Invalidate profile cache after update
+            $cacheKey = "user_profile_{$request->user()->id}";
+            Cache::forget($cacheKey);
 
             return response()->json([
                 'message' => 'Profile updated successfully',

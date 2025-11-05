@@ -50,9 +50,15 @@ services:
       - DB_DATABASE=marketing_ai
       - DB_USERNAME=postgres
       - DB_PASSWORD=123456
+      - CACHE_STORE=redis
+      - CACHE_PREFIX=marketa_cache
+      - SESSION_DRIVER=redis
       - QUEUE_CONNECTION=redis
+      - REDIS_CLIENT=phpredis
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - REDIS_DB=0
+      - REDIS_CACHE_DB=1
       - PYTHON_AI_URL=http://api:8001/api
       - PYTHON_AI_TIMEOUT=300
       - USE_SIMPLE_AI=true
@@ -85,9 +91,14 @@ services:
       - DB_DATABASE=marketing_ai
       - DB_USERNAME=postgres
       - DB_PASSWORD=123456
+      - CACHE_STORE=redis
+      - SESSION_DRIVER=redis
       - QUEUE_CONNECTION=redis
+      - REDIS_CLIENT=phpredis
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - REDIS_DB=0
+      - REDIS_CACHE_DB=1
       - PYTHON_AI_URL=http://api:8001/api
     depends_on:
       redis:
@@ -115,9 +126,14 @@ services:
       - DB_DATABASE=marketing_ai
       - DB_USERNAME=postgres
       - DB_PASSWORD=123456
+      - CACHE_STORE=redis
+      - SESSION_DRIVER=redis
       - QUEUE_CONNECTION=redis
+      - REDIS_CLIENT=phpredis
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - REDIS_DB=0
+      - REDIS_CACHE_DB=1
       - PYTHON_AI_URL=http://api:8001/api
     depends_on:
       redis:

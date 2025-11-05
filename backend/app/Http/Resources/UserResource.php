@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Cache;
 
 class UserResource extends JsonResource
 {
@@ -32,7 +33,14 @@ class UserResource extends JsonResource
                     ];
                 });
             }),
-            'permissions' => $this->getAllPermissions()->pluck('name'),
+            // Only load permissions when roles are loaded (they're related)
+            // Cache permissions for 1 hour since they change infrequently
+            'permissions' => $this->whenLoaded('roles', function () {
+                $cacheKey = "user_permissions_{$this->id}";
+                return Cache::remember($cacheKey, 3600, function () {
+                    return $this->getAllPermissions()->pluck('name');
+                });
+            }),
             'active_subscription' => new SubscriptionResource($this->whenLoaded('activeSubscription')),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

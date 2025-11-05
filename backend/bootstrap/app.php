@@ -16,11 +16,17 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+            'rate.limit' => \App\Http\Middleware\SmartRateLimiting::class,
         ]);
         
         // Enable CORS for API routes
         $middleware->api(prepend: [
             \Illuminate\Http\Middleware\HandleCors::class,
+        ]);
+        
+        // Add response compression for better performance
+        $middleware->api(append: [
+            \App\Http\Middleware\CompressResponse::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

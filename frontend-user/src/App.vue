@@ -1,6 +1,30 @@
 <template>
   <div :dir="currentDir">
     <router-view />
+    
+    <!-- Global Toast Notification -->
+    <Toast
+      :show="toastState.show"
+      :message="toastState.message"
+      :type="toastState.type"
+      :duration="toastState.duration"
+      @hide="hideToast"
+    />
+    
+    <!-- Global Confirm Dialog -->
+    <ConfirmDialog
+      :show="confirmState.show"
+      :title="confirmState.title"
+      :message="confirmState.message"
+      :description="confirmState.description"
+      :confirm-text="confirmState.confirmText"
+      :cancel-text="confirmState.cancelText"
+      :danger-mode="confirmState.dangerMode"
+      :loading="confirmState.loading"
+      @confirm="handleConfirm"
+      @cancel="handleCancel"
+      @close="handleCancel"
+    />
   </div>
 </template>
 
@@ -8,9 +32,15 @@
 import { onMounted, computed, watch } from 'vue'
 import { useAuthStore } from './stores/auth'
 import { useI18n } from 'vue-i18n'
+import { useToast } from './composables/useToast'
+import { useConfirm } from './composables/useConfirm'
+import Toast from './components/shared/Toast.vue'
+import ConfirmDialog from './components/shared/ConfirmDialog.vue'
 
 const authStore = useAuthStore()
 const { locale } = useI18n()
+const { toastState, hideToast } = useToast()
+const { confirmState, handleConfirm, handleCancel } = useConfirm()
 
 // Compute text direction based on locale
 const currentDir = computed(() => locale.value === 'ar' ? 'rtl' : 'ltr')

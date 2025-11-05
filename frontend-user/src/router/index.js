@@ -142,6 +142,11 @@ const router = createRouter({
           component: () => import('../views/dashboard/designs/DesignsList.vue'),
         },
         {
+          path: 'designs/favorites',
+          name: 'favorites',
+          component: () => import('../views/dashboard/designs/FavoritesPage.vue'),
+        },
+        {
           path: 'designs/:uuid',
           name: 'design-detail',
           component: () => import('../views/dashboard/designs/DesignsList.vue'),
@@ -170,6 +175,11 @@ const router = createRouter({
           path: 'usage',
           name: 'usage',
           component: () => import('../views/dashboard/Usage.vue'),
+        },
+        {
+          path: 'trash',
+          name: 'trash',
+          component: () => import('../views/dashboard/designs/TrashPage.vue'),
         },
         {
           path: 'settings',

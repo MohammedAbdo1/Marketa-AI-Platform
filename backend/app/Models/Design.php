@@ -45,6 +45,7 @@ class Design extends Model
         'is_public' => 'boolean',
         'views_count' => 'integer',
         'used_count' => 'integer',
+        'trashed_at' => 'datetime',
     ];
 
     /**
@@ -238,6 +239,56 @@ class Design extends Model
     public function scopeAiGenerated($query)
     {
         return $query->where('source_type', 'ai');
+    }
+
+    /**
+     * Scope for not trashed designs
+     */
+    public function scopeNotTrashed($query)
+    {
+        return $query->whereNull('trashed_at');
+    }
+
+    /**
+     * Scope for trashed designs
+     */
+    public function scopeTrashed($query)
+    {
+        return $query->whereNotNull('trashed_at')->whereNull('deleted_at');
+    }
+
+    /**
+     * Move design to trash
+     */
+    public function moveToTrash(): void
+    {
+        $this->trashed_at = now();
+        $this->save();
+    }
+
+    /**
+     * Restore design from trash
+     */
+    public function restoreFromTrash(): void
+    {
+        $this->trashed_at = null;
+        $this->save();
+    }
+
+    /**
+     * Get favorites relationship
+     */
+    public function favorites(): HasMany
+    {
+        return $this->hasMany(UserFavorite::class);
+    }
+
+    /**
+     * Check if design is favorited by a user
+     */
+    public function isFavoritedBy(int $userId): bool
+    {
+        return $this->favorites()->where('user_id', $userId)->exists();
     }
 }
 

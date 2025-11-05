@@ -19,6 +19,8 @@ use App\Http\Controllers\Api\BrandController;
 use App\Http\Controllers\Api\CampaignController;
 use App\Http\Controllers\Api\CampaignPostController;
 use App\Http\Controllers\Api\DesignController;
+use App\Http\Controllers\Api\FavoriteController;
+use App\Http\Controllers\Api\FavoriteSectionController;
 use App\Http\Controllers\Api\AiConversationController;
 use App\Http\Controllers\Api\ImageProxyController;
 use App\Http\Controllers\Api\PublicController;
@@ -51,9 +53,13 @@ Route::get('plans', [PublicController::class, 'getPlans']);
 // 🔵 User Routes (Web & Mobile Apps)
 // ═══════════════════════════════════════════════════════════════════
 
-// Authentication
-Route::post('login', [LoginController::class, 'login'])->name('login');
-Route::post('register', [RegisterController::class, 'register'])->name('register');
+// Authentication (strict rate limiting)
+Route::post('login', [LoginController::class, 'login'])
+    ->middleware('rate.limit:auth')
+    ->name('login');
+Route::post('register', [RegisterController::class, 'register'])
+    ->middleware('rate.limit:auth')
+    ->name('register');
 
 // Google OAuth
 Route::get('auth/google', [SocialAuthController::class, 'redirectToGoogle'])->name('auth.google');
@@ -72,10 +78,17 @@ Route::post('resend-verification', [EmailVerificationController::class, 'resend'
 
 // Protected User Routes
 Route::middleware(['auth:sanctum'])->group(function () {
-    // Auth & Profile
+    // Auth & Profile (read operations)
     Route::post('logout', [LoginController::class, 'logout'])->name('logout');
-    Route::get('profile', [ProfileController::class, 'show'])->name('profile.show');
-    Route::put('profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::get('me', [ProfileController::class, 'me'])
+        ->middleware('rate.limit:read')
+        ->name('me'); // Lightweight endpoint for user info
+    Route::get('profile', [ProfileController::class, 'show'])
+        ->middleware('rate.limit:read')
+        ->name('profile.show');
+    Route::put('profile', [ProfileController::class, 'update'])
+        ->middleware('rate.limit:write')
+        ->name('profile.update');
     
     // Email Verification (for logged-in users)
     Route::post('email/verification-notification', [EmailVerificationController::class, 'sendVerificationEmail'])
@@ -90,13 +103,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
 
     // Brands Management
-    Route::apiResource('brands', BrandController::class);
-    Route::post('brands/{id}/logo', [BrandController::class, 'uploadLogo']);
+    Route::apiResource('brands', BrandController::class)->middleware('rate.limit:write');
+    Route::post('brands/{id}/logo', [BrandController::class, 'uploadLogo'])->middleware('rate.limit:write');
 
     // Campaigns Management
-    Route::apiResource('campaigns', CampaignController::class);
-    Route::post('campaigns/preview', [CampaignController::class, 'generatePreview']);
-    Route::post('campaigns/{campaign}/generate', [CampaignController::class, 'generate']);
+    Route::apiResource('campaigns', CampaignController::class)->middleware('rate.limit:write');
+    Route::post('campaigns/preview', [CampaignController::class, 'generatePreview'])
+        ->middleware('rate.limit:ai');
+    Route::post('campaigns/{campaign}/generate', [CampaignController::class, 'generate'])
+        ->middleware('rate.limit:ai');
     Route::get('campaigns/{campaign}/status', [CampaignController::class, 'generationStatus']);
     Route::post('campaigns/suggest-colors', [CampaignController::class, 'suggestColors']);
     Route::post('campaigns/{campaign}/select-plan', [CampaignController::class, 'selectPlan']);
@@ -123,13 +138,31 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Designs Management (New Unified System)
     Route::get('designs/templates', [DesignController::class, 'templates'])->name('designs.templates');
+    Route::get('designs/trash', [DesignController::class, 'trashed'])->name('designs.trashed');
     Route::apiResource('designs', DesignController::class)->parameters(['designs' => 'design']);
     Route::post('designs/{design}/duplicate', [DesignController::class, 'duplicate'])->name('designs.duplicate');
     Route::post('designs/{design}/export', [DesignController::class, 'export'])->name('designs.export');
     Route::post('designs/{design}/template', [DesignController::class, 'toTemplate'])->name('designs.template');
+    Route::patch('designs/{design}/title', [DesignController::class, 'updateTitle'])->name('designs.update-title');
+    Route::post('designs/{design}/trash', [DesignController::class, 'moveToTrash'])->name('designs.trash');
+    Route::post('designs/{design}/restore', [DesignController::class, 'restore'])->name('designs.restore');
+    Route::delete('designs/{design}/force', [DesignController::class, 'forceDelete'])->name('designs.force-delete');
 
-    // AI Conversations & Studio
-    Route::prefix('ai')->group(function () {
+    // Favorites System
+    Route::get('favorites', [FavoriteController::class, 'index'])->name('favorites.index');
+    Route::post('favorites', [FavoriteController::class, 'store'])->name('favorites.store');
+    Route::delete('favorites/{design}', [FavoriteController::class, 'destroy'])->name('favorites.destroy');
+    Route::patch('favorites/{design}', [FavoriteController::class, 'update'])->name('favorites.update');
+
+    // Favorite Sections
+    Route::get('favorite-sections', [FavoriteSectionController::class, 'index'])->name('favorite-sections.index');
+    Route::post('favorite-sections', [FavoriteSectionController::class, 'store'])->name('favorite-sections.store');
+    Route::patch('favorite-sections/{section}', [FavoriteSectionController::class, 'update'])->name('favorite-sections.update');
+    Route::delete('favorite-sections/{section}', [FavoriteSectionController::class, 'destroy'])->name('favorite-sections.destroy');
+    Route::post('favorite-sections/reorder', [FavoriteSectionController::class, 'reorder'])->name('favorite-sections.reorder');
+
+    // AI Conversations & Studio (AI rate limiting)
+    Route::prefix('ai')->middleware('rate.limit:ai')->group(function () {
         Route::apiResource('conversations', AiConversationController::class)
              ->parameters(['conversations' => 'conversation']);
         Route::post('conversations/{conversation}/messages', [AiConversationController::class, 'sendMessage'])

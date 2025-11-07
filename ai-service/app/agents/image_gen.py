@@ -117,14 +117,18 @@ class ImageGeneratorAgent:
                 self.logger.warning(f"⚠️ Preferred provider '{preferred_provider}' failed: {str(e)}")
                 # Fall through to try other providers
         
-        # Try providers in priority order
+        # Try providers in priority order (copy to allow disabling providers on the fly)
         last_error = None
-        for provider_name in self.provider_names:
+        for provider_name in list(self.provider_names):
             try:
-                return await self._generate_with_provider(provider_name, prompt, size)
+                url = await self._generate_with_provider(provider_name, prompt, size)
+                self.last_provider = provider_name
+                return url
             except Exception as e:
                 last_error = e
                 self.logger.warning(f"⚠️ Provider '{provider_name}' failed: {str(e)}, trying next...")
+                if self._should_disable_provider(provider_name, e):
+                    self._disable_provider(provider_name, str(e))
                 continue
         
         # All providers failed
@@ -139,66 +143,88 @@ class ImageGeneratorAgent:
             URL to saved image in static folder
         """
         provider = self.providers[provider_name]
+        max_attempts = 3 if provider_name == 'pollinations' else 1
+        attempt = 0
         
-        self.logger.info({"stage": "py_image_provider_start", "provider": provider_name, "size": size, "prompt": prompt[:100]})
-        
-        # Generate image (returns either data URL or direct URL)
-        result = await provider.generate_image(prompt, size)
-        
-        # Handle different result types
-        image_bytes = None
-        
-        if result.startswith('http://') or result.startswith('https://'):
-            # Direct URL (Pollinations) - download it
-            self.logger.info(f"Downloading image from {provider_name} CDN...")
-            async with aiohttp.ClientSession() as session:
-                async with session.get(result, timeout=60) as resp:
-                    if resp.status != 200:
-                        raise Exception(f"Failed to download image: HTTP {resp.status}")
-                    image_bytes = await resp.read()
-                    
-        elif result.startswith('data:image'):
-            # Base64 data URL (HuggingFace, Stability, etc.)
-            header, b64 = result.split(",", 1)
-            image_bytes = base64.b64decode(b64)
-        else:
-            raise Exception(f"Unknown result format from {provider_name}: {result[:50]}")
-        
-        # Save image to local storage
-        images_dir = os.path.join("app", "static", "images")
-        os.makedirs(images_dir, exist_ok=True)
-        filename = f"{uuid.uuid4().hex}.png"
-        filepath = os.path.join(images_dir, filename)
-        
-        with open(filepath, "wb") as f:
-            f.write(image_bytes)
-        
-        final_url = f"{settings.IMAGE_BASE_URL}/static/images/{filename}"
-        
-        self.logger.info({
-            "stage": "py_image_provider_success", 
-            "provider": provider_name, 
-            "path": filepath,
-            "size_bytes": len(image_bytes),
-            "url": final_url
-        })
-        
-        return final_url
-        cached_result = cache_service.get_cached_ai_result(cache_key, "image")
-        if cached_result:
-            return cached_result
-        
-        try:
-            # Add timeout to the request
-            await asyncio.wait_for(
-                asyncio.sleep(0.1),  # Simulate processing time
-                timeout=settings.AI_REQUEST_TIMEOUT
-            )
-            raise RuntimeError("Text model image generation not implemented")
-        except asyncio.TimeoutError:
-            raise RuntimeError("Image provider timeout")
-        except Exception as e:
-            raise
+        while attempt < max_attempts:
+            attempt += 1
+            try:
+                self.logger.info({"stage": "py_image_provider_start", "provider": provider_name, "size": size, "prompt": prompt[:100], "attempt": attempt})
+                
+                # Generate image (returns either data URL or direct URL)
+                result = await provider.generate_image(prompt, size)
+                
+                # Handle different result types
+                image_bytes = None
+                
+                if isinstance(result, str) and (result.startswith('http://') or result.startswith('https://')):
+                    # Direct URL (Pollinations) - download it
+                    self.logger.info(f"Downloading image from {provider_name} CDN...")
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(result, timeout=60) as resp:
+                            if resp.status != 200:
+                                raise Exception(f"Failed to download image: HTTP {resp.status}")
+                            image_bytes = await resp.read()
+                            
+                elif isinstance(result, str) and result.startswith('data:image'):
+                    # Base64 data URL (HuggingFace, Stability, etc.)
+                    header, b64 = result.split(",", 1)
+                    image_bytes = base64.b64decode(b64)
+                else:
+                    raise Exception(f"Unknown result format from {provider_name}: {str(result)[:50]}")
+                
+                # Save image to local storage
+                images_dir = os.path.join("app", "static", "images")
+                os.makedirs(images_dir, exist_ok=True)
+                filename = f"{uuid.uuid4().hex}.png"
+                filepath = os.path.join(images_dir, filename)
+                
+                with open(filepath, "wb") as f:
+                    f.write(image_bytes)
+                
+                final_url = f"{settings.IMAGE_BASE_URL}/static/images/{filename}"
+                
+                self.logger.info({
+                    "stage": "py_image_provider_success", 
+                    "provider": provider_name, 
+                    "path": filepath,
+                    "size_bytes": len(image_bytes),
+                    "url": final_url,
+                    "attempt": attempt
+                })
+                
+                return final_url
+            except Exception as e:
+                if provider_name == 'pollinations' and attempt < max_attempts:
+                    self.logger.warning(f"Pollinations attempt {attempt} failed ({e}). Retrying...")
+                    await asyncio.sleep(1)
+                    continue
+                raise
+
+    def _disable_provider(self, provider_name: str, reason: str):
+        """
+        Permanently disable a provider after a fatal configuration/permission error so that
+        subsequent posts do not keep retrying the same failing provider.
+        """
+        if provider_name in self.providers:
+            self.logger.warning(f"Disabling provider '{provider_name}' for this session due to: {reason}")
+            self.providers.pop(provider_name, None)
+        if provider_name in self.provider_names:
+            self.provider_names = [name for name in self.provider_names if name != provider_name]
+    
+    def _should_disable_provider(self, provider_name: str, error: Exception) -> bool:
+        """
+        Detect permanent errors (missing credentials, expired credits, deprecated endpoints, etc.)
+        and disable the provider to avoid repeated failures during the same request/worker lifetime.
+        """
+        message = str(error).lower()
+        if provider_name == 'huggingface' and ('no longer supported' in message or 'api error: 410' in message):
+            return True
+        if provider_name == 'openai' and ('insufficient permissions' in message or 'api error: 401' in message):
+            return True
+        if provider_name == 'stability' and ('insufficient credits' in message or 'payment_required' in message or 'api error: 402' in message):
+            return True
+        return False
     
     async def generate_image_for_post(self, post_data):
         """Generate image based on post content"""
@@ -298,3 +324,161 @@ class ImageGeneratorAgent:
                 "height": composed_result.dimensions[1]
             }
         }
+    
+    async def analyze_design_preferences(self, description: str) -> dict:
+        """
+        Analyze design preferences from campaign description using AI
+        
+        Returns dict with:
+        - style: modern, classic, minimal, etc.
+        - colors: list of preferred colors
+        - text_placement: top, bottom, center, etc.
+        - text_style: bold, elegant, playful, etc.
+        - mood: energetic, calm, professional, etc.
+        """
+        if not self.model:
+            # Return default preferences
+            return {
+                "style": "modern",
+                "colors": ["#E85D04", "#370617", "#FFBA08"],
+                "text_placement": "bottom-center",
+                "text_style": "bold, clear",
+                "mood": "professional"
+            }
+        
+        prompt = f"""
+تحليل تفضيلات التصميم من الوصف التالي:
+
+"{description}"
+
+استخرج:
+1. الطابع المرئي (Style): modern, classic, minimal, luxury, etc.
+2. الألوان المفضلة (إذا ذُكرت)
+3. موضع النصوص المفضل: top, bottom, center, left, right
+4. نمط النصوص: bold, elegant, playful, professional
+5. المزاج العام: energetic, calm, professional, friendly
+
+أرجع JSON:
+{{
+  "style": "modern",
+  "colors": ["#color1", "#color2"],
+  "text_placement": "bottom-center",
+  "text_style": "bold",
+  "mood": "professional"
+}}
+"""
+        
+        try:
+            response = await asyncio.wait_for(
+                asyncio.to_thread(self.model.generate_content, prompt),
+                timeout=15
+            )
+            
+            if response and response.text:
+                import json
+                return json.loads(response.text)
+        except Exception as e:
+            self.logger.warning(f"Design preference analysis failed: {e}")
+        
+        # Return defaults on failure
+        return {
+            "style": "modern",
+            "colors": ["#E85D04", "#370617", "#FFBA08"],
+            "text_placement": "bottom-center",
+            "text_style": "bold",
+            "mood": "professional"
+        }
+    
+    async def generate_post_with_composition(self, post_data: dict, design_prefs: dict, size: str = "1024x1024"):
+        """
+        Generate a complete post with smart composition:
+        1. Generate base image
+        2. Analyze safe zones for text
+        3. Create multilingual text layers
+        4. Return composition structure
+        
+        Args:
+            post_data: dict with content, image_prompt, languages
+            design_prefs: design preferences from analyze_design_preferences
+            size: image size
+            
+        Returns:
+            dict with base_image_url, composition_layers, etc.
+        """
+        self.logger.info("[ComposePost] Starting smart composition generation")
+        
+        # Step 1: Generate base image
+        image_prompt = post_data.get('image_prompt', '')
+        base_image_url = await self.generate_image(image_prompt, size)
+        
+        # Step 2: Analyze image for safe zones (simplified version)
+        # In full version, this would use CV to detect actual safe zones
+        safe_zones = self._calculate_safe_zones(size, design_prefs.get('text_placement', 'bottom-center'))
+        
+        # Step 3: Create text layers for each language
+        content = post_data.get('content', {})
+        primary_language = post_data.get('primary_language', 'ar')
+        
+        text_layers = []
+        y_offset = 0
+        
+        for lang, text in content.items():
+            # Determine font based on language
+            font = "Cairo-Bold" if lang == 'ar' else "Roboto-Bold"
+            
+            # Main text layer
+            layer = {
+                "type": "text",
+                "content": text[:100],  # Limit text length
+                "language": lang,
+                "position": {
+                    "x": safe_zones['x'],
+                    "y": safe_zones['y'] + y_offset
+                },
+                "style": {
+                    "font": font,
+                    "size": 56 if lang == primary_language else 42,
+                    "color": "#FFFFFF",
+                    "shadow": True,
+                    "align": "center",
+                    "weight": "bold"
+                },
+                "editable": True
+            }
+            
+            text_layers.append(layer)
+            y_offset += 70  # Space between languages
+        
+        # Step 4: Return composition structure
+        return {
+            "base_image_url": base_image_url,
+            "composition_layers": {
+                "layers": text_layers,
+                "dimensions": self._parse_size(size)
+            },
+            "design_analysis": {
+                "safe_zones": safe_zones,
+                "design_prefs": design_prefs
+            },
+            "is_composed": True
+        }
+    
+    def _calculate_safe_zones(self, size: str, placement: str) -> dict:
+        """Calculate safe zones for text placement"""
+        width, height = self._parse_size(size)
+        
+        # Default safe zones based on placement
+        zones = {
+            "top-center": {"x": width // 2, "y": 100},
+            "center": {"x": width // 2, "y": height // 2},
+            "bottom-center": {"x": width // 2, "y": height - 200},
+            "bottom-left": {"x": 150, "y": height - 200},
+            "bottom-right": {"x": width - 150, "y": height - 200}
+        }
+        
+        return zones.get(placement, zones["bottom-center"])
+    
+    def _parse_size(self, size: str) -> dict:
+        """Parse size string '1024x1024' to dict"""
+        width, height = map(int, size.split('x'))
+        return {"width": width, "height": height}

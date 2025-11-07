@@ -79,7 +79,13 @@
       <!-- Posts Count -->
       <div class="posts-info">
         <i class="bx bx-images"></i>
-        <span>{{ campaign.generated_posts?.length || 0 }} {{ $t('campaigns.posts') }}</span>
+        <span>{{ getPostsCount() }} {{ $t('campaigns.posts') }}</span>
+      </div>
+
+      <!-- Language Info (if AI analyzed) -->
+      <div v-if="campaign.ai_analysis?.detected_languages" class="language-info">
+        <i class="bx bx-globe"></i>
+        <span>{{ getLanguagesText() }}</span>
       </div>
 
       <!-- Generation Progress (if generating) -->
@@ -234,6 +240,22 @@ const getPlatformName = (platform) => {
     'pinterest': 'Pinterest'
   }
   return nameMap[platform.toLowerCase()] || platform
+}
+
+const getPostsCount = () => {
+  return props.campaign.posts?.length || props.campaign.generated_posts?.length || 0
+}
+
+const getLanguagesText = () => {
+  const langs = props.campaign.ai_analysis?.detected_languages || []
+  const names = {
+    'ar': 'العربية',
+    'en': 'English',
+    'fr': 'Français',
+    'it': 'Italiano',
+    'es': 'Español'
+  }
+  return langs.map(l => names[l] || l).join(', ')
 }
 
 onMounted(() => {
@@ -520,6 +542,24 @@ onUnmounted(() => {
 .posts-info i {
   font-size: var(--text-md);
   color: var(--color-brand-primary);
+}
+
+/* Language Info */
+.language-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  width: fit-content;
+}
+
+.language-info i {
+  font-size: var(--text-md);
+  color: var(--color-purple-text);
 }
 
 /* Generation Progress */

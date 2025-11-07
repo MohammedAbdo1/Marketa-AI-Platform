@@ -1,5 +1,15 @@
 <template>
   <div class="campaign-wizard">
+    <!-- Draft Resume Dialog -->
+    <DraftResumeDialog
+      :show="showDraftDialog"
+      :drafts="campaignStore.drafts"
+      @close="showDraftDialog = false"
+      @resume="resumeDraft"
+      @discard="discardDraft"
+      @startNew="startNewCampaign"
+    />
+
     <!-- Header -->
     <div class="wizard-header mb-4">
       <div class="d-flex justify-content-between align-items-center">
@@ -9,7 +19,7 @@
         </div>
         <button 
           class="btn btn-outline-secondary"
-          @click="$router.push('/dashboard/campaigns')"
+          @click="handleCancel"
         >
           <i class="bx bx-x"></i> {{ $t('common.cancel') }}
         </button>
@@ -62,6 +72,7 @@
         v-model:wizardData="wizardData"
         :preview="campaignStore.preview"
         :loading="campaignStore.loading"
+        :campaign-uuid="currentCampaignUuid"
         @generate="generateCampaign"
         @back="previousStep"
       />
@@ -84,7 +95,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCampaignStore } from '@/stores/campaign'
 import { useBrandStore } from '@/stores/brand'
@@ -93,37 +104,37 @@ import WizardStep1Business from './wizard/WizardStep1Business.vue'
 import WizardStep2Goal from './wizard/WizardStep2Goal.vue'
 import WizardStep3Brand from './wizard/WizardStep3Brand.vue'
 import WizardStep4Preview from './wizard/WizardStep4Preview.vue'
+import DraftResumeDialog from '@/components/campaigns/DraftResumeDialog.vue'
 
 const router = useRouter()
 const campaignStore = useCampaignStore()
 const brandStore = useBrandStore()
 const toast = useToast()
 
+// Draft Management
+const showDraftDialog = ref(false)
+const currentCampaignUuid = ref(null)
+const hasChanges = ref(false)
+const autoSaveInterval = ref(null)
+
 // Wizard state
 const currentStep = ref(1)
 const totalSteps = 4
-const wizardData = ref({
-  // Step 1: Business Basics
+const defaultWizardState = () => ({
   business_type: '',
   product_name: '',
   description: '',
-  
-  // Step 2: Campaign Goal
   campaign_goal: '',
   target_audience: {},
   duration_weeks: 4,
-  
-  // Step 3: Brand & Preferences
+  platforms: [],
+  posts_per_week: 3,
   brand_id: null,
   brand_colors: null,
   brand_voice: null,
-  platforms: [],
-  posts_per_week: 3,
-  languages: ['ar', 'en'],
-  
-  // Step 4: Preview
   mode: 'quick'
 })
+const wizardData = ref(defaultWizardState())
 
 const loading = ref(false)
 const generationProgress = ref(0)
@@ -134,8 +145,112 @@ const progressPercentage = computed(() => {
   return (currentStep.value / totalSteps) * 100
 })
 
-// Methods
-const nextStep = () => {
+// Helpers
+const buildWizardSnapshot = () => ({
+  step1: {
+    business_type: wizardData.value.business_type,
+    product_name: wizardData.value.product_name,
+    description: wizardData.value.description
+  },
+  step2: {
+    campaign_goal: wizardData.value.campaign_goal,
+    target_audience: wizardData.value.target_audience,
+    duration_weeks: wizardData.value.duration_weeks,
+    platforms: wizardData.value.platforms,
+    posts_per_week: wizardData.value.posts_per_week
+  },
+  step3: {
+    brand_id: wizardData.value.brand_id,
+    brand_colors: wizardData.value.brand_colors,
+    brand_voice: wizardData.value.brand_voice
+  },
+  step4: {
+    mode: wizardData.value.mode
+  }
+})
+
+const buildUpdatePayload = (step) => {
+  const payload = {
+    wizard_step: step,
+    wizard_data: buildWizardSnapshot(),
+    name: wizardData.value.product_name,
+    business_type: wizardData.value.business_type,
+    description: wizardData.value.description,
+    goal: wizardData.value.campaign_goal || 'awareness',
+    target_audience: wizardData.value.target_audience,
+    platforms: wizardData.value.platforms,
+    duration_weeks: wizardData.value.duration_weeks,
+    posts_per_week: wizardData.value.posts_per_week,
+    mode: wizardData.value.mode
+  }
+
+  if (wizardData.value.brand_id) {
+    payload.brand_id = wizardData.value.brand_id
+  }
+
+  return payload
+}
+
+const ensureCampaignCreated = async () => {
+  if (currentCampaignUuid.value) {
+    return currentCampaignUuid.value
+  }
+
+  if (!wizardData.value.business_type || !wizardData.value.product_name || !wizardData.value.description) {
+    toast.error('يرجى تعبئة بيانات الخطوة الأولى قبل المتابعة.')
+    return null
+  }
+
+  try {
+    const campaign = await campaignStore.createCampaign({
+      name: wizardData.value.product_name,
+      business_type: wizardData.value.business_type,
+      description: wizardData.value.description,
+      goal: wizardData.value.campaign_goal || 'awareness',
+      wizard_step: 1,
+      wizard_data: buildWizardSnapshot(),
+      mode: wizardData.value.mode
+    })
+    currentCampaignUuid.value = campaign.uuid
+    hasChanges.value = false
+    return currentCampaignUuid.value
+  } catch (error) {
+    console.error('Failed to create campaign draft:', error)
+    toast.error('تعذّر إنشاء الحملة، حاول مرة أخرى.')
+    return null
+  }
+}
+
+const saveWizardProgress = async (step = currentStep.value) => {
+  if (!currentCampaignUuid.value) return true
+
+  try {
+    await campaignStore.updateCampaign(currentCampaignUuid.value, buildUpdatePayload(step))
+    hasChanges.value = false
+    return true
+  } catch (error) {
+    console.error('Failed to save progress:', error)
+    const message = error?.response?.data?.message || 'فشل حفظ تقدم الحملة'
+    toast.error(message)
+    return false
+  }
+}
+
+// Navigation
+const nextStep = async () => {
+  let saveResult = true
+  if (currentStep.value === 1) {
+    const uuid = await ensureCampaignCreated()
+    if (!uuid) return
+    saveResult = await saveWizardProgress(1)
+  } else {
+    saveResult = await saveWizardProgress(currentStep.value)
+  }
+
+  if (!saveResult) {
+    return
+  }
+
   if (currentStep.value < totalSteps) {
     currentStep.value++
   }
@@ -147,70 +262,127 @@ const previousStep = () => {
   }
 }
 
+// Draft Management Methods
+const resumeDraft = (draft) => {
+  currentCampaignUuid.value = draft.uuid
+  currentStep.value = draft.wizard_step || 1
+
+  const snapshot = draft.wizard_data || {}
+  const defaults = defaultWizardState()
+
+  wizardData.value = {
+    ...defaults,
+    ...snapshot.step1,
+    ...snapshot.step2,
+    ...snapshot.step3,
+    ...snapshot.step4
+  }
+
+  wizardData.value.business_type = snapshot.step1?.business_type ?? draft.business_type ?? defaults.business_type
+  wizardData.value.product_name = snapshot.step1?.product_name ?? draft.name ?? defaults.product_name
+  wizardData.value.description = snapshot.step1?.description ?? draft.description ?? defaults.description
+  wizardData.value.campaign_goal = snapshot.step2?.campaign_goal ?? draft.goal ?? defaults.campaign_goal
+  wizardData.value.target_audience = snapshot.step2?.target_audience ?? draft.target_audience ?? defaults.target_audience
+  wizardData.value.duration_weeks = snapshot.step2?.duration_weeks
+    ?? (draft.duration_days ? Math.max(1, Math.round(draft.duration_days / 7)) : defaults.duration_weeks)
+  wizardData.value.platforms = snapshot.step2?.platforms ?? draft.platforms ?? defaults.platforms
+  wizardData.value.posts_per_week = snapshot.step2?.posts_per_week ?? draft.posts_per_week ?? defaults.posts_per_week
+  wizardData.value.brand_id = snapshot.step3?.brand_id ?? draft.brand_id ?? defaults.brand_id
+  wizardData.value.brand_colors = snapshot.step3?.brand_colors ?? defaults.brand_colors
+  wizardData.value.brand_voice = snapshot.step3?.brand_voice ?? defaults.brand_voice
+  wizardData.value.mode = snapshot.step4?.mode ?? draft.mode ?? defaults.mode
+
+  showDraftDialog.value = false
+  hasChanges.value = false
+  toast.success('تم استئناف الحملة')
+}
+
+const discardDraft = async (draft) => {
+  try {
+    await campaignStore.deleteCampaign(draft.uuid)
+    campaignStore.drafts = campaignStore.drafts.filter(item => item.uuid !== draft.uuid)
+
+    if (currentCampaignUuid.value === draft.uuid) {
+      resetWizardState()
+    }
+
+    toast.success('تم حذف المسودة')
+  } catch (error) {
+    toast.error('فشل حذف المسودة')
+  }
+}
+
+const resetWizardState = () => {
+  wizardData.value = defaultWizardState()
+  currentCampaignUuid.value = null
+  currentStep.value = 1
+  hasChanges.value = false
+}
+
+const startNewCampaign = () => {
+  resetWizardState()
+  showDraftDialog.value = false
+}
+
+const handleCancel = async () => {
+  if (hasChanges.value && currentCampaignUuid.value) {
+    await saveWizardProgress(currentStep.value)
+  }
+  router.push('/dashboard/campaigns')
+}
+
+// Watch for changes
+watch(wizardData, () => {
+  hasChanges.value = true
+}, { deep: true })
+
 const generateCampaign = async () => {
   try {
     loading.value = true
-    
-    // Initialize Socket.IO connection
+
     campaignStore.initializeSocket()
-    
-    // Create campaign first
-    const campaign = await campaignStore.createCampaign({
-      name: wizardData.value.product_name,
-      business_type: wizardData.value.business_type,
-      description: wizardData.value.description,
-      goal: wizardData.value.campaign_goal,
-      target_audience: wizardData.value.target_audience,
-      platforms: wizardData.value.platforms,
-      duration_days: wizardData.value.duration_weeks * 7,
-      posts_per_week: wizardData.value.posts_per_week,
-      brand_id: wizardData.value.brand_id,
-      mode: wizardData.value.mode,
-      languages: wizardData.value.languages
-    })
 
-    // Guard: ensure we have a valid uuid
-    const createdUuid = campaign?.uuid
-    if (!createdUuid) {
-      throw new Error('Failed to determine created campaign uuid')
-    }
-
-    // Start generation
-    const response = await campaignStore.generateCampaign(createdUuid)
-    
-    // If completed immediately (simple mode), navigate without polling
-    if (response?.status === 'completed') {
+    const uuid = await ensureCampaignCreated()
+    if (!uuid) {
       loading.value = false
-      toast.success('Campaign generated successfully!')
-      router.push(`/dashboard/campaigns/${createdUuid}`)
       return
     }
 
-    // Fallback: quick status check in case backend completed but response lacked status
-    try {
-      const quickStatus = await campaignStore.fetchGenerationStatus(createdUuid, 1)
-      if (quickStatus?.status === 'completed') {
-        loading.value = false
-        toast.success('Campaign generated successfully!')
-        router.push(`/dashboard/campaigns/${createdUuid}`)
-        return
-      }
-    } catch (_) {
-      // ignore and proceed to polling
+  const saved = await saveWizardProgress(totalSteps)
+  if (!saved) {
+    loading.value = false
+    return
+  }
+
+    const response = await campaignStore.generateCampaign(uuid)
+
+    if (response?.status === 'completed') {
+      loading.value = false
+      toast.success('تم إنشاء الحملة بنجاح!')
+      router.push(`/dashboard/campaigns/${uuid}`)
+      return
     }
 
-    // Set task ID for Socket.IO tracking
+    try {
+      const quickStatus = await campaignStore.fetchGenerationStatus(uuid, 1)
+      if (quickStatus?.status === 'completed') {
+        loading.value = false
+        toast.success('تم إنشاء الحملة بنجاح!')
+        router.push(`/dashboard/campaigns/${uuid}`)
+        return
+      }
+    } catch (error) {
+      console.debug('Quick status check failed, continuing with polling.', error)
+    }
+
     if (response?.task_id) {
       campaignStore.setCurrentTaskId(response.task_id)
     }
-    
-    // Start polling for progress (fallback)
-    startProgressPolling(createdUuid)
-    
-    toast.success('Campaign generation started!')
-    
+
+    startProgressPolling(uuid)
+    toast.success('بدأ إنشاء الحملة!')
   } catch (error) {
-    toast.error(error?.response?.data?.message || error.message || 'Failed to generate campaign')
+    toast.error(error?.response?.data?.message || error.message || 'فشل إنشاء الحملة')
     loading.value = false
   }
 }
@@ -254,14 +426,40 @@ const startProgressPolling = (campaignUuid) => {
 
 // Lifecycle
 onMounted(async () => {
+  // Check for incomplete drafts
+  await campaignStore.fetchDrafts()
+  
+  if (!currentCampaignUuid.value && campaignStore.drafts.length > 0) {
+    showDraftDialog.value = true
+  } else {
+    startNewCampaign()
+  }
+  
   // Load brands for step 3
   await brandStore.fetchBrands()
+  
+  // Setup auto-save interval (every 30 seconds)
+  autoSaveInterval.value = setInterval(async () => {
+    if (hasChanges.value && currentCampaignUuid.value) {
+      await saveWizardProgress(currentStep.value)
+    }
+  }, 30000)
 })
 
 onUnmounted(() => {
+  // Clear intervals
   if (generationInterval.value) {
     clearInterval(generationInterval.value)
   }
+  if (autoSaveInterval.value) {
+    clearInterval(autoSaveInterval.value)
+  }
+  
+  // Save before leaving
+  if (hasChanges.value && currentCampaignUuid.value) {
+    saveWizardProgress(currentStep.value)
+  }
+  
   // Disconnect Socket.IO when component is unmounted
   campaignStore.disconnectSocket()
 })

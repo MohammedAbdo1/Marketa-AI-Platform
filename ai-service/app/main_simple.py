@@ -76,6 +76,24 @@ async def health_check():
         "mode": "simple (no Redis)"
     }
 
+@app.post("/api/campaign/intelligence")
+async def generate_campaign_intelligence(request: CampaignPreviewRequest, raw: Request):
+    """Generate comprehensive campaign intelligence"""
+    try:
+        rid = raw.headers.get("X-Request-ID", "-")
+        t0 = time.time()
+        logger.info({"stage": "py_received", "rid": rid, "endpoint": "/api/campaign/intelligence"})
+        
+        planner = get_planner_agent()
+        intelligence = await planner.generate_campaign_intelligence(request)
+        
+        logger.info({"stage": "py_done", "rid": rid, "elapsed": round(time.time() - t0, 3)})
+        return intelligence
+    
+    except Exception as e:
+        logger.exception({"stage": "py_error", "rid": rid, "error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Intelligence generation failed: {str(e)}")
+
 @app.post("/api/campaign/preview")
 async def generate_campaign_preview(request: CampaignPreviewRequest, raw: Request):
     """Generate campaign structure preview"""

@@ -6,10 +6,13 @@ export const useCampaignStore = defineStore('campaign', {
   state: () => ({
     campaigns: [],
     currentCampaign: null,
+    drafts: [],
     loading: false,
     error: null,
     generationStatus: null,
     preview: null,
+    intelligence: null,
+    intelligenceMeta: null,
     socket: null,
     currentTaskId: null
   }),
@@ -37,6 +40,22 @@ export const useCampaignStore = defineStore('campaign', {
   },
 
   actions: {
+    async fetchDrafts() {
+      this.loading = true
+      this.error = null
+      
+      try {
+        const response = await campaignService.getDrafts()
+        this.drafts = response.data || []
+        return response.data
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Failed to fetch drafts'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
     // Fetch all campaigns
     async fetchCampaigns(params = {}) {
       this.loading = true
@@ -79,6 +98,15 @@ export const useCampaignStore = defineStore('campaign', {
       try {
         const response = await campaignService.createCampaign(data)
         this.campaigns.unshift(response.data)
+        // Ensure the draft list stays in sync for resume dialog
+        if (response.data?.status === 'draft') {
+          const existingIndex = this.drafts.findIndex(draft => draft.uuid === response.data.uuid)
+          if (existingIndex !== -1) {
+            this.drafts.splice(existingIndex, 1, response.data)
+          } else {
+            this.drafts.unshift(response.data)
+          }
+        }
         return response.data
       } catch (error) {
         this.error = error.response?.data?.message || 'Failed to create campaign'
@@ -90,7 +118,6 @@ export const useCampaignStore = defineStore('campaign', {
 
     // Update campaign
     async updateCampaign(uuid, data) {
-      this.loading = true
       this.error = null
       
       try {
@@ -102,12 +129,20 @@ export const useCampaignStore = defineStore('campaign', {
         if (this.currentCampaign?.uuid === uuid) {
           this.currentCampaign = response.data
         }
+        const draftIndex = this.drafts.findIndex(draft => draft.uuid === uuid)
+        if (response.data?.status === 'draft' || response.data?.status === 'building') {
+          if (draftIndex !== -1) {
+            this.drafts.splice(draftIndex, 1, response.data)
+          } else {
+            this.drafts.unshift(response.data)
+          }
+        } else if (draftIndex !== -1) {
+          this.drafts.splice(draftIndex, 1)
+        }
         return response.data
       } catch (error) {
         this.error = error.response?.data?.message || 'Failed to update campaign'
         throw error
-      } finally {
-        this.loading = false
       }
     },
 
@@ -137,10 +172,34 @@ export const useCampaignStore = defineStore('campaign', {
       
       try {
         const response = await campaignService.generatePreview(data)
-        this.preview = response.data
-        return response.data
+        this.preview = response.data ?? null
+        return response
       } catch (error) {
         this.error = error.response?.data?.message || 'Failed to generate preview'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // Generate comprehensive campaign intelligence
+    async generateIntelligence(data) {
+      this.loading = true
+      this.error = null
+      
+      try {
+        const response = await campaignService.generateIntelligence(data)
+        const payloadData = response.data
+          ? JSON.parse(JSON.stringify(response.data))
+          : null
+        this.intelligence = payloadData
+        this.intelligenceMeta = {
+          fallback: response.fallback ?? false,
+          message: response.message ?? null,
+        }
+        return response
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Failed to generate intelligence'
         throw error
       } finally {
         this.loading = false

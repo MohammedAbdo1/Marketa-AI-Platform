@@ -18,7 +18,9 @@ class HuggingFaceImageService:
     
     def __init__(self, api_key: str = None):
         self.api_key = api_key
-        self.base_url = "https://api-inference.huggingface.co/models"
+        # HuggingFace moved public inference to router.huggingface.co in 2024 Q4
+        # See: https://huggingface.co/docs/api-inference/quicktour
+        self.base_url = "https://router.huggingface.co/hf-inference/models"
         
         # Free models available:
         # - stabilityai/stable-diffusion-xl-base-1.0 (SDXL)

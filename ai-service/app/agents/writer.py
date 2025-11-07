@@ -59,16 +59,13 @@ class ContentWriterAgent:
             posts = []
             for i in range(num_posts):
                 platform = platforms[i % len(platforms)] if platforms else 'instagram'
-                # Single-language fallback content (no language enforcement)
-                content_ar = ""
-                content_en = f"Post {i+1} about {product}"
                 image_prompt = _build_image_prompt_from_request(request, platform)
                 posts.append({
                     "platform": platform,
-                    "post_type": "text",
-                    "content_ar": content_ar,
-                    "content_en": content_en,
-                    "hashtags": ["#تسويق", "#أعمال"],
+                    "post_type": "image",
+                    "content": {"en": f"Post {i+1} about {product}"},
+                    "primary_language": "en",
+                    "hashtags": {"en": ["#marketing", "#business"]},
                     "needs_image": True,
                     "image_url": None,
                     "image_prompt": image_prompt,
@@ -92,12 +89,21 @@ class ContentWriterAgent:
         platform_str = ", ".join(platforms)
 
         prompt = f"""
-        بصفتك كاتب محتوى تسويقي محترف، أنشئ قائمة JSON فقط (بدون أي نص خارجي) تحتوي على {num_posts} عناصر كمنشورات لمنصات: {platform_str}.
-        الحملة:
+        أنت كاتب محتوى تسويقي محترف. أنشئ {num_posts} منشورات تسويقية احترافية.
+        
+        معلومات الحملة:
         - نوع العمل: {request.business_type}
         - المنتج/الخدمة: {request.product_name}
         - الوصف: {request.description}
         - الهدف: {getattr(request, 'campaign_goal', getattr(request, 'goal', 'increase sales'))}
+        - المنصات: {platform_str}
+        
+        ⚠️ قواعد مهمة للغة:
+        1. استنتج اللغة المطلوبة من الوصف أعلاه
+        2. إذا الوصف بالعربي والجمهور عربي → استخدم العربية فقط
+        3. إذا الوصف بالإنجليزي والجمهور أجنبي → استخدم الإنجليزية فقط
+        4. إذا ذكر صراحة "عرب وأجانب" أو "bilingual" → استخدم اللغتين
+        5. لا تضف لغات غير مطلوبة!
         - اللغة: استخدم نفس لغة الوصف تلقائياً (لا تُترجم)
 
         لكل عنصر في المصفوفة أعطِ الحقول التالية حرفياً:
@@ -149,13 +155,22 @@ class ContentWriterAgent:
                     hashtags = [h.strip() for h in hashtags.split() if h.startswith('#')]
                 if not isinstance(hashtags, list):
                     hashtags = []
-                # Language-agnostic mapping: accept content_ar/content_en/content
-                content_ar = item.get("content_ar") or ""
-                content_en = item.get("content_en") or ""
-                generic = item.get("content") or ""
-                if not content_ar and not content_en and generic:
-                    # Store generic content in EN field to keep pipeline unchanged
-                    content_en = generic
+                # Flexible multi-language content support
+                content = item.get("content", {})
+                primary_language = item.get("primary_language", "ar")
+                
+                # Backward compatibility: convert old format to new
+                if not content:
+                    content_ar = item.get("content_ar") or ""
+                    content_en = item.get("content_en") or ""
+                    if content_ar:
+                        content["ar"] = content_ar
+                    if content_en:
+                        content["en"] = content_en
+                    if content_ar and not primary_language:
+                        primary_language = "ar"
+                    elif content_en and not primary_language:
+                        primary_language = "en"
                 # Check if composition is needed for this post
                 needs_composition = _check_composition_needed(getattr(request, 'description', ''))
                 composition_analysis = None
@@ -174,15 +189,18 @@ class ContentWriterAgent:
                 
                 post_data = {
                     "platform": platform,
-                    "post_type": item.get("post_type") or "text",
-                    "content_ar": content_ar,
-                    "content_en": content_en,
-                    "hashtags": hashtags,
+                    "post_type": item.get("post_type") or "image",
+                    "content": content,
+                    "primary_language": primary_language,
+                    "hashtags": hashtags if isinstance(hashtags, dict) else {primary_language: hashtags},
                     "needs_image": True,
                     "image_urls": [],
                     "image_prompt": item.get("image_prompt") or _build_image_prompt_from_request(request, platform),
                     "week": int(item.get("week") or 1 + (i // 7)),
                     "day": int(item.get("day") or 1 + (i % 7)),
+                    "day_name": item.get("day_name"),
+                    "phase": item.get("phase"),
+                    "content_brief": item.get("content_brief"),
                 }
                 
                 # Add composition data if available
@@ -231,8 +249,8 @@ class ContentWriterAgent:
             )
             
             result = {
-                "content_ar": "منشور جديد باللغة العربية",
-                "content_en": "New post in English"
+                "content": {"ar": "منشور جديد باللغة العربية"},
+                "primary_language": "ar"
             }
             
             # Cache the result

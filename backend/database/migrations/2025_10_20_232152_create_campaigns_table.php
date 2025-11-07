@@ -13,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('campaigns', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('organization_id')->constrained()->onDelete('cascade');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade'); // المستخدم الذي أنشأ الحملة
+            $table->foreignId('organization_id')->nullable()->constrained()->onDelete('cascade'); // اختياري للمؤسسات
             $table->foreignId('brand_id')->nullable()->constrained()->onDelete('set null');
             $table->string('name');
             $table->string('business_type');
@@ -40,17 +41,31 @@ return new class extends Migration
             $table->json('ai_auto_filled')->nullable(); // البيانات التي ملأها AI
             $table->json('ai_generated_plans')->nullable(); // الخطط المولدة (2-3 خطط)
             $table->integer('selected_plan_index')->nullable();
-            $table->enum('status', ['draft', 'generating', 'ready', 'active', 'completed', 'paused'])->default('draft');
+            $table->json('ai_analysis')->nullable(); // تحليل AI للحملة
+            $table->string('status')->default('draft'); // draft, pending_review, generating, ready, active, paused, completed, archived
             $table->enum('generation_status', ['pending', 'generating', 'completed', 'failed','generating'])->default('pending');
             $table->integer('generation_progress')->default(0);
             $table->string('generation_task_id')->nullable();
             $table->json('brand_override_colors')->nullable();
+            
+            // Draft Management (Wizard System)
+            $table->integer('wizard_step')->default(1);
+            $table->json('wizard_data')->nullable();
+            $table->boolean('is_complete')->default(false);
+            
+            // Campaign Intelligence
+            $table->json('campaign_strategy')->nullable();
 
             $table->string('ai_task_id')->nullable();
             $table->timestamp('generation_started_at')->nullable();
             $table->timestamp('generation_completed_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
+            
+            // Performance Indexes
+            $table->index('user_id', 'idx_campaigns_user');
+            $table->index(['user_id', 'status'], 'idx_campaigns_user_status');
+            $table->index('brand_id', 'idx_campaigns_brand');
         });
     }
 

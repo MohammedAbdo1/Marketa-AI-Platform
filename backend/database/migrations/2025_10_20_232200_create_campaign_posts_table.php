@@ -16,8 +16,11 @@ return new class extends Migration
             $table->foreignId('campaign_id')->constrained()->onDelete('cascade');
             $table->string('platform'); // instagram, facebook, twitter, linkedin, tiktok
             $table->string('post_type'); // text, image, video, carousel, story
-            $table->text('content_ar')->nullable();
-            $table->text('content_en')->nullable();
+            
+            // نظام محتوى مرن متعدد اللغات
+            $table->json('content')->nullable(); // {'ar': '...', 'en': '...', 'fr': '...'}
+            $table->string('primary_language')->nullable(); // ar, en, fr, etc.
+            
             $table->text('hashtags')->nullable();
             $table->json('media_urls')->nullable();
             $table->json('media_prompts')->nullable(); // Prompts المستخدمة لتوليد الصور
@@ -31,6 +34,12 @@ return new class extends Migration
             $table->integer('order_number')->default(0);
             $table->integer('week_number')->nullable();
             $table->string('day_of_week')->nullable();
+            
+            // Content Brief & Day Tracking
+            $table->json('content_brief')->nullable(); // التعليمات التفصيلية
+            $table->integer('day_number')->nullable();
+            $table->string('day_name')->nullable();
+            $table->string('phase_name')->nullable();
 
             $table->integer('version_number')->default(1);
             
@@ -42,6 +51,11 @@ return new class extends Migration
             $table->foreign('parent_post_id')->references('id')->on('campaign_posts')->onDelete('cascade');
             $table->timestamps();
             $table->softDeletes();
+            
+            // Performance Indexes
+            $table->index('campaign_id', 'idx_posts_campaign');
+            $table->index(['campaign_id', 'platform'], 'idx_posts_campaign_platform');
+            $table->index(['campaign_id', 'status'], 'idx_posts_campaign_status');
         });
     }
 

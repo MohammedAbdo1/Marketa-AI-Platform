@@ -64,8 +64,8 @@ class Settings:
     IMAGE_GEN_STYLE = "photographic"
     
     # Timeout settings
-    AI_REQUEST_TIMEOUT = int(os.getenv("AI_REQUEST_TIMEOUT", "120"))  # 120 seconds for Google API calls
-    MAX_OUTPUT_TOKENS = int(os.getenv("MAX_OUTPUT_TOKENS", "1000"))  # 1000 tokens max
+    AI_REQUEST_TIMEOUT = int(os.getenv("AI_REQUEST_TIMEOUT", "240"))  # 240 seconds for Google API calls (4 minutes)
+    MAX_OUTPUT_TOKENS = int(os.getenv("MAX_OUTPUT_TOKENS", "2000"))  # 2000 tokens max
     
     # Redis Configuration
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")

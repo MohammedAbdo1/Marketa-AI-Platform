@@ -44,7 +44,7 @@ return [
     'python_ai' => [
         // Default to localhost for development
         'url' => env('PYTHON_AI_URL', 'http://localhost:8001/api'),
-        'timeout' => env('PYTHON_AI_TIMEOUT', 180),  // 180 seconds to allow Google API calls
+        'timeout' => env('PYTHON_AI_TIMEOUT', 300),  // 300 seconds (5 minutes) for AI intelligence generation
         'retry_attempts' => env('PYTHON_AI_RETRY_ATTEMPTS', 3),
         'websocket_url' => env('PYTHON_AI_WEBSOCKET_URL', 'http://localhost:8001'),
         'health_check_url' => env('PYTHON_AI_HEALTH_URL', 'http://localhost:8001/health'),

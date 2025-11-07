@@ -14,6 +14,7 @@ class Campaign extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'user_id',
         'uuid',
         'organization_id',
         'brand_id',
@@ -50,6 +51,12 @@ class Campaign extends Model
         'ai_task_id',
         'generation_started_at',
         'generation_completed_at',
+        // Intelligence System fields
+        'ai_analysis',
+        'wizard_step',
+        'wizard_data',
+        'is_complete',
+        'campaign_strategy',
     ];
 
     protected $casts = [
@@ -67,6 +74,11 @@ class Campaign extends Model
         'paid_ads_budget' => 'decimal:2',
         'generation_started_at' => 'datetime',
         'generation_completed_at' => 'datetime',
+        // Intelligence System casts
+        'ai_analysis' => 'array',
+        'wizard_data' => 'array',
+        'is_complete' => 'boolean',
+        'campaign_strategy' => 'array',
     ];
 
     /**

@@ -106,8 +106,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('brands', BrandController::class)->middleware('rate.limit:write');
     Route::post('brands/{id}/logo', [BrandController::class, 'uploadLogo'])->middleware('rate.limit:write');
 
+    // Draft listing helpers (placed before resource to avoid UUID collisions)
+    Route::get('campaigns/drafts', [CampaignController::class, 'getDrafts'])->middleware('rate.limit:read');
+    Route::get('campaign-drafts', [CampaignController::class, 'getDrafts'])->middleware('rate.limit:read');
+
     // Campaigns Management
     Route::apiResource('campaigns', CampaignController::class)->middleware('rate.limit:write');
+    
+    // Campaign Operations
     Route::post('campaigns/preview', [CampaignController::class, 'generatePreview'])
         ->middleware('rate.limit:ai');
     Route::post('campaigns/{campaign}/generate', [CampaignController::class, 'generate'])

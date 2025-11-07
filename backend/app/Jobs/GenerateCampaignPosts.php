@@ -126,6 +126,13 @@ class GenerateCampaignPosts implements ShouldQueue
     protected function saveGeneratedPosts(array $posts): void
     {
         foreach ($posts as $index => $postData) {
+            // Extract content (flexible multi-language support)
+            $content = $postData['content'] ?? [];
+            $primaryLanguage = $postData['primary_language'] ?? 'ar';
+            
+            // Extract hashtags (flexible multi-language support)
+            $hashtags = $postData['hashtags'] ?? [];
+            
             // Check if this post needs composition
             $needsComposition = $postData['needs_composition'] ?? false;
             $compositionData = null;
@@ -139,15 +146,20 @@ class GenerateCampaignPosts implements ShouldQueue
                 $baseImageUrl = $compositionData['base_image_url'] ?? null;
                 $compositionLayers = $compositionData['layers'] ?? null;
                 $compositionAnalysis = $postData['composition_analysis'] ?? null;
+            } elseif (isset($postData['composition_layers'])) {
+                // Direct composition data
+                $compositionLayers = $postData['composition_layers'];
+                $baseImageUrl = $postData['base_image_url'] ?? null;
+                $needsComposition = $postData['is_composed'] ?? true;
             }
             
             CampaignPost::create([
                 'campaign_id' => $this->campaign->id,
                 'platform' => $postData['platform'] ?? 'instagram',
-                'post_type' => $postData['post_type'] ?? 'text',
-                'content_ar' => $postData['content_ar'] ?? '',
-                'content_en' => $postData['content_en'] ?? '',
-                'hashtags' => is_array($postData['hashtags'] ?? []) ? json_encode($postData['hashtags']) : ($postData['hashtags'] ?? '[]'),
+                'post_type' => $postData['post_type'] ?? 'image',
+                'content' => $content,
+                'primary_language' => $primaryLanguage,
+                'hashtags' => $hashtags,
                 'media_urls' => isset($postData['image_url']) ? [$postData['image_url']] : 
                               (isset($compositionData['final_image_url']) ? [$compositionData['final_image_url']] : []),
                 'media_prompts' => isset($postData['image_prompt']) ? [$postData['image_prompt']] : [],
@@ -158,7 +170,11 @@ class GenerateCampaignPosts implements ShouldQueue
                 'ai_cost' => $postData['cost'] ?? 0,
                 'order_number' => $index + 1,
                 'week_number' => $postData['week'] ?? 1,
-                'day_of_week' => $postData['day'] ?? 1,
+                'day_of_week' => $postData['day'] ?? null,
+                'day_number' => $postData['day'] ?? null,
+                'day_name' => $postData['day_name'] ?? null,
+                'phase_name' => $postData['phase'] ?? null,
+                'content_brief' => $postData['content_brief'] ?? null,
                 // Composition fields
                 'base_image_url' => $baseImageUrl,
                 'composition_layers' => $compositionLayers,

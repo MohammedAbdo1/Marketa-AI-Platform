@@ -1,554 +1,882 @@
 <template>
-  <div class="wizard-step">
-    <div class="step-header mb-4">
-      <h3>{{ $t('campaigns.wizard.step4.title') }}</h3>
-      <p class="text-muted">{{ $t('campaigns.wizard.step4.subtitle') }}</p>
-    </div>
-
-    <!-- Preview Content -->
-    <div v-if="preview" class="preview-content">
-      <!-- Campaign Overview -->
-      <div class="campaign-overview mb-4">
-        <div class="row">
-          <div class="col-md-6">
-            <div class="overview-card">
-              <div class="card-icon">
-                <i class="bx bx-target-lock"></i>
-              </div>
-              <div class="card-content">
-                <h6>{{ $t('campaigns.wizard.step4.campaignGoal') }}</h6>
-                <p>{{ getGoalLabel(wizardData.campaign_goal) }}</p>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-6">
-            <div class="overview-card">
-              <div class="card-icon">
-                <i class="bx bx-calendar"></i>
-              </div>
-              <div class="card-content">
-                <h6>{{ $t('campaigns.wizard.step4.duration') }}</h6>
-                <p>{{ wizardData.duration_weeks }} {{ $t('common.weeks') }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Campaign Structure -->
-      <div class="campaign-structure mb-4">
-        <h5 class="mb-3">{{ $t('campaigns.wizard.step4.campaignStructure') }}</h5>
-        
-        <div class="structure-grid">
-          <div class="structure-item">
-            <div class="structure-value">{{ preview.total_posts }}</div>
-            <div class="structure-label">{{ $t('campaigns.wizard.step4.totalPosts') }}</div>
-          </div>
-          <div class="structure-item">
-            <div class="structure-value">{{ preview.weekly_distribution ? Object.keys(preview.weekly_distribution).length : 0 }}</div>
-            <div class="structure-label">{{ $t('campaigns.wizard.step4.weeks') }}</div>
-          </div>
-          <div class="structure-item">
-            <div class="structure-value">{{ wizardData.posts_per_week }}</div>
-            <div class="structure-label">{{ $t('campaigns.wizard.step4.postsPerWeek') }}</div>
-          </div>
-          <div class="structure-item">
-            <div class="structure-value">{{ wizardData.platforms?.length || 0 }}</div>
-            <div class="structure-label">{{ $t('campaigns.wizard.step4.platforms') }}</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Platform Breakdown -->
-      <div v-if="preview.platforms_breakdown" class="platform-breakdown mb-4">
-        <h5 class="mb-3">{{ $t('campaigns.wizard.step4.platformBreakdown') }}</h5>
-        <div class="platform-stats">
-          <div 
-            v-for="(count, platform) in preview.platforms_breakdown" 
-            :key="platform"
-            class="platform-stat"
-          >
-            <div class="platform-name">
-              <i :class="getPlatformIcon(platform)"></i>
-              {{ getPlatformLabel(platform) }}
-            </div>
-            <div class="platform-count">{{ count }} {{ $t('common.posts') }}</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Content Themes -->
-      <div v-if="preview.content_themes?.length" class="content-themes mb-4">
-        <h5 class="mb-3">{{ $t('campaigns.wizard.step4.contentThemes') }}</h5>
-        <div class="themes-list">
-          <span 
-            v-for="theme in preview.content_themes" 
-            :key="theme"
-            class="theme-tag"
-          >
-            {{ theme }}
-          </span>
-        </div>
-      </div>
-
-      <!-- Suggested Topics -->
-      <div v-if="preview.suggested_topics?.length" class="suggested-topics mb-4">
-        <h5 class="mb-3">{{ $t('campaigns.wizard.step4.suggestedTopics') }}</h5>
-        <div class="topics-list">
-          <div 
-            v-for="(topic, index) in preview.suggested_topics.slice(0, 5)" 
-            :key="index"
-            class="topic-item"
-          >
-            <i class="bx bx-check-circle text-success me-2"></i>
-            {{ topic }}
-          </div>
-        </div>
-      </div>
-
-      <!-- Weekly Distribution -->
-      <div v-if="preview.weekly_distribution" class="weekly-distribution mb-4">
-        <h5 class="mb-3">{{ $t('campaigns.wizard.step4.weeklyDistribution') }}</h5>
-        <div class="distribution-chart">
-          <div 
-            v-for="(count, week) in preview.weekly_distribution" 
-            :key="week"
-            class="week-bar"
-          >
-            <div class="week-label">{{ week }}</div>
-            <div class="week-progress">
-              <div 
-                class="week-fill" 
-                :style="{ width: getWeekPercentage(count) + '%' }"
-              ></div>
-            </div>
-            <div class="week-count">{{ count }}</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
+  <div class="wizard-step-preview">
     <!-- Loading State -->
-    <div v-else-if="loading" class="loading-state">
-      <div class="text-center">
-        <div class="spinner-border text-primary mb-3"></div>
-        <h5>{{ $t('campaigns.wizard.step4.generatingPreview') }}</h5>
-        <p class="text-muted">{{ $t('campaigns.wizard.step4.generatingDescription') }}</p>
-      </div>
+    <div v-if="loading" class="loading-state">
+      <div class="spinner"></div>
+      <p>{{ $t('campaigns.generating_intelligence') }}</p>
     </div>
 
-    <!-- Error State -->
-    <div v-else class="error-state">
-      <div class="text-center">
-        <i class="bx bx-error-circle text-danger mb-3" style="font-size: 3rem;"></i>
-        <h5>{{ $t('campaigns.wizard.step4.previewError') }}</h5>
-        <p class="text-muted">{{ $t('campaigns.wizard.step4.previewErrorDesc') }}</p>
-        <button class="btn btn-outline-primary" @click="generatePreview">
-          <i class="bx bx-refresh me-1"></i> {{ $t('common.tryAgain') }}
-        </button>
+    <!-- Intelligence Preview -->
+    <div v-else-if="intelligence" class="intelligence-preview">
+      <div 
+        v-if="hasFallback" 
+        class="fallback-banner card card-interactive"
+      >
+        <div class="card-body fallback-banner-body">
+          <i class="bx bx-info-circle"></i>
+          <div>
+            <h4 class="fallback-title">{{ $t('campaigns.preview_fallback_title') }}</h4>
+            <p class="fallback-message">
+              {{ fallbackMessage }}
+            </p>
+          </div>
+        </div>
       </div>
-    </div>
 
-    <!-- Step Actions -->
-    <div class="step-actions mt-4">
-      <div class="d-flex justify-content-between">
-        <button 
-          type="button" 
-          class="btn btn-outline-secondary"
-          @click="handleBack"
-        >
-          <i class="bx bx-left-arrow-alt me-1"></i> {{ $t('common.back') }}
-        </button>
-        <div>
-          <button 
-            v-if="!preview"
-            type="button" 
-            class="btn btn-outline-primary me-2"
-            @click="generatePreview"
-            :disabled="loading"
+      <!-- Executive Summary -->
+      <div class="summary-card card">
+        <div class="card-header">
+          <h3 class="card-title">
+            <i class="bx bx-bar-chart-alt-2"></i>
+            {{ $t('campaigns.executive_summary') }}
+          </h3>
+        </div>
+        <div class="card-body">
+          <div class="summary-grid">
+            <div class="summary-item">
+              <span class="label">{{ $t('campaigns.campaign_name') }}</span>
+              <span class="value">{{ intelligence.executive_summary?.campaign_name }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="label">{{ $t('campaigns.objective') }}</span>
+              <span class="value">{{ intelligence.executive_summary?.objective }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="label">{{ $t('campaigns.duration') }}</span>
+              <span class="value">{{ intelligence.executive_summary?.duration }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="label">{{ $t('campaigns.total_posts') }}</span>
+              <span class="value">{{ intelligence.executive_summary?.total_posts }}</span>
+            </div>
+          </div>
+
+          <!-- KPIs -->
+          <div v-if="intelligence.executive_summary?.target_kpis" class="kpis-grid">
+            <div class="kpi-card">
+              <i class="bx bx-trending-up"></i>
+              <div class="kpi-info">
+                <span class="kpi-label">{{ $t('campaigns.reach') }}</span>
+                <span class="kpi-value">{{ intelligence.executive_summary.target_kpis.reach }}</span>
+              </div>
+            </div>
+            <div class="kpi-card">
+              <i class="bx bx-heart"></i>
+              <div class="kpi-info">
+                <span class="kpi-label">{{ $t('campaigns.engagement_rate') }}</span>
+                <span class="kpi-value">{{ intelligence.executive_summary.target_kpis.engagement_rate }}</span>
+              </div>
+            </div>
+            <div class="kpi-card" v-if="intelligence.executive_summary.target_kpis.conversions">
+              <i class="bx bx-shopping-bag"></i>
+              <div class="kpi-info">
+                <span class="kpi-label">{{ $t('campaigns.conversions') }}</span>
+                <span class="kpi-value">{{ intelligence.executive_summary.target_kpis.conversions }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Language Analysis -->
+      <div v-if="intelligence.language_analysis" class="language-analysis-card card">
+        <div class="card-header">
+          <h4 class="card-title">
+            <i class="bx bx-globe"></i>
+            {{ $t('campaigns.language_analysis') }}
+          </h4>
+        </div>
+        <div class="card-body">
+          <div class="analysis-grid">
+            <div class="analysis-item">
+              <span class="label">{{ $t('campaigns.detected_languages') }}</span>
+              <div class="language-badges">
+                <span 
+                  v-for="lang in intelligence.language_analysis.detected_languages" 
+                  :key="lang"
+                  class="badge badge-primary"
+                >
+                  {{ getLanguageName(lang) }}
+                </span>
+              </div>
+            </div>
+            <div class="analysis-item">
+              <span class="label">{{ $t('campaigns.audience_location') }}</span>
+              <span class="value">{{ intelligence.language_analysis.audience_location }}</span>
+            </div>
+            <div class="analysis-item">
+              <span class="label">{{ $t('campaigns.audience_age') }}</span>
+              <span class="value">{{ intelligence.language_analysis.audience_age }}</span>
+            </div>
+            <div class="analysis-item">
+              <span class="label">{{ $t('campaigns.tone') }}</span>
+              <span class="value">{{ intelligence.language_analysis.tone }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Campaign Phases -->
+      <div v-if="intelligence.campaign_phases" class="phases-section">
+        <h3 class="section-title">
+          <i class="bx bx-layer"></i>
+          {{ $t('campaigns.campaign_phases') }}
+        </h3>
+        
+        <div class="phases-accordion">
+          <details 
+            v-for="phase in intelligence.campaign_phases" 
+            :key="phase.phase"
+            class="phase-details"
+            open
           >
-            <i class="bx bx-refresh me-1"></i> {{ $t('campaigns.wizard.step4.generatePreview') }}
+            <summary class="phase-summary">
+              <div class="phase-header">
+                <span class="phase-number">{{ $t('campaigns.phase') }} {{ phase.phase }}</span>
+                <span class="phase-name">{{ phase.name }}</span>
+              </div>
+              <i class="bx bx-chevron-down"></i>
+            </summary>
+            
+            <div class="phase-content">
+              <div class="phase-info-grid">
+                <div class="info-item">
+                  <span class="label">{{ $t('campaigns.duration') }}</span>
+                  <span class="value">{{ phase.duration }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="label">{{ $t('campaigns.objective') }}</span>
+                  <span class="value">{{ phase.objective }}</span>
+                </div>
+              </div>
+
+              <div class="phase-strategy">
+                <h5>{{ $t('campaigns.strategy') }}</h5>
+                <p>{{ phase.strategy }}</p>
+              </div>
+
+              <div v-if="phase.content_mix" class="content-mix">
+                <h5>{{ $t('campaigns.content_mix') }}</h5>
+                <div class="mix-grid">
+                  <div v-for="(percentage, type) in phase.content_mix" :key="type" class="mix-item">
+                    <span class="mix-type">{{ type }}</span>
+                    <span class="mix-percentage">{{ percentage }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="phase.key_messages" class="key-messages">
+                <h5>{{ $t('campaigns.key_messages') }}</h5>
+                <ul>
+                  <li v-for="(message, idx) in phase.key_messages" :key="idx">
+                    {{ message }}
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <!-- Timeline Visualization -->
+      <div v-if="intelligence.daily_calendar" class="timeline-section">
+        <h3 class="section-title">
+          <i class="bx bx-calendar"></i>
+          {{ $t('campaigns.daily_calendar') }}
+        </h3>
+        <TimelineVisualization :timeline="intelligence.daily_calendar" />
+      </div>
+
+      <!-- Sample Posts -->
+      <div v-if="intelligence.sample_posts && intelligence.sample_posts.length > 0" class="samples-section">
+        <h3 class="section-title">
+          <i class="bx bx-images"></i>
+          {{ $t('campaigns.sample_posts') }}
+        </h3>
+        
+        <div class="samples-carousel">
+          <div class="samples-grid">
+            <SamplePostCard 
+              v-for="(post, idx) in intelligence.sample_posts.slice(0, 3)" 
+              :key="idx"
+              :post="post"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Content Guidelines -->
+      <div v-if="intelligence.content_guidelines" class="guidelines-card card">
+        <div class="card-header">
+          <h4 class="card-title">
+            <i class="bx bx-palette"></i>
+            {{ $t('campaigns.content_guidelines') }}
+          </h4>
+        </div>
+        <div class="card-body">
+          <div class="guidelines-grid">
+            <div class="guideline-item">
+              <span class="label">{{ $t('campaigns.visual_style') }}</span>
+              <span class="value">{{ intelligence.content_guidelines.visual_style }}</span>
+            </div>
+            <div class="guideline-item">
+              <span class="label">{{ $t('campaigns.tone_of_voice') }}</span>
+              <span class="value">{{ intelligence.content_guidelines.tone_of_voice }}</span>
+            </div>
+            <div v-if="intelligence.content_guidelines.colors" class="guideline-item full-width">
+              <span class="label">{{ $t('campaigns.color_palette') }}</span>
+              <div class="color-swatches">
+                <div 
+                  v-for="color in intelligence.content_guidelines.colors" 
+                  :key="color"
+                  class="color-swatch"
+                  :style="{ background: color }"
+                  :title="color"
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estimated Metrics -->
+      <div v-if="intelligence.estimated_metrics" class="metrics-card card">
+        <div class="card-header">
+          <h4 class="card-title">
+            <i class="bx bx-calculator"></i>
+            {{ $t('campaigns.estimated_metrics') }}
+          </h4>
+        </div>
+        <div class="card-body">
+          <div class="metrics-grid">
+            <div class="metric-item">
+              <i class="bx bx-group"></i>
+              <div class="metric-info">
+                <span class="metric-label">{{ $t('campaigns.total_reach') }}</span>
+                <span class="metric-value">{{ intelligence.estimated_metrics.total_reach }}</span>
+              </div>
+            </div>
+            <div class="metric-item">
+              <i class="bx bx-pulse"></i>
+              <div class="metric-info">
+                <span class="metric-label">{{ $t('campaigns.engagement_rate') }}</span>
+                <span class="metric-value">{{ intelligence.estimated_metrics.engagement_rate }}</span>
+              </div>
+            </div>
+            <div class="metric-item">
+              <i class="bx bx-dollar"></i>
+              <div class="metric-info">
+                <span class="metric-label">{{ $t('campaigns.estimated_cost') }}</span>
+                <span class="metric-value">{{ intelligence.estimated_metrics.estimated_cost }}</span>
+              </div>
+            </div>
+            <div class="metric-item">
+              <i class="bx bx-time"></i>
+              <div class="metric-info">
+                <span class="metric-label">{{ $t('campaigns.generation_time') }}</span>
+                <span class="metric-value">{{ intelligence.estimated_metrics.generation_time }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="wizard-actions">
+        <button class="btn btn-secondary" @click="$emit('back')">
+          <i class="bx bx-arrow-back"></i>
+          {{ $t('common.back') }}
+        </button>
+        
+        <div class="primary-actions">
+          <button class="btn btn-ghost" @click="regeneratePreview">
+            <i class="bx bx-refresh"></i>
+            {{ $t('campaigns.regenerate_preview') }}
           </button>
-          <button 
-            v-if="preview"
-            type="button" 
-            class="btn btn-primary"
-            @click="handleGenerate"
-            :disabled="loading"
-          >
-            <i class="bx bx-rocket me-1"></i> {{ $t('campaigns.wizard.step4.generateCampaign') }}
+          
+          <button class="btn btn-primary" @click="confirmGenerate">
+            <i class="bx bx-check-circle"></i>
+            {{ $t('campaigns.confirm_and_generate') }}
           </button>
         </div>
       </div>
+    </div>
+
+    <!-- Initial State -->
+    <div v-else class="initial-state">
+      <i class="bx bx-bulb"></i>
+      <h4>{{ $t('campaigns.ready_to_preview') }}</h4>
+      <p>{{ $t('campaigns.preview_description') }}</p>
+      <button class="btn btn-primary" @click="generatePreview">
+        <i class="bx bx-sparkles"></i>
+        {{ $t('campaigns.generate_preview') }}
+      </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useCampaignStore } from '@/stores/campaign'
-import { useToast } from 'vue-toastification'
+import TimelineVisualization from '@/components/campaigns/TimelineVisualization.vue'
+import SamplePostCard from '@/components/campaigns/SamplePostCard.vue'
+import { useToast } from '@/composables/useToast'
 
 const props = defineProps({
-  wizardData: {
-    type: Object,
-    required: true
-  },
-  preview: {
-    type: Object,
-    default: null
-  },
-  loading: {
-    type: Boolean,
-    default: false
-  }
+  wizardData: { type: Object, required: true },
+  campaignUuid: { type: String, default: null }
 })
 
-const emit = defineEmits(['update:wizardData', 'generate', 'back'])
+const emit = defineEmits(['back', 'generate'])
+
+const { t } = useI18n()
 const campaignStore = useCampaignStore()
-const toast = useToast()
+const { info: toastInfo, error: toastError } = useToast()
 
-// Local data
-const localData = ref({ ...props.wizardData })
+const loading = ref(false)
+const intelligence = computed(() => campaignStore.intelligence)
+const hasFallback = computed(() => !!campaignStore.intelligenceMeta?.fallback)
 
-// Watch for changes
-watch(localData, (newData) => {
-  emit('update:wizardData', newData)
-}, { deep: true })
-
-// Methods
-const getGoalLabel = (goal) => {
-  const goals = {
-    awareness: 'Brand Awareness',
-    sales: 'Sales & Revenue',
-    engagement: 'Engagement',
-    traffic: 'Website Traffic',
-    leads: 'Lead Generation'
-  }
-  return goals[goal] || goal
-}
-
-const getPlatformLabel = (platform) => {
-  const platforms = {
-    instagram: 'Instagram',
-    facebook: 'Facebook',
-    twitter: 'Twitter',
-    linkedin: 'LinkedIn'
-  }
-  return platforms[platform] || platform
-}
-
-const getPlatformIcon = (platform) => {
-  const icons = {
-    instagram: 'bx bxl-instagram',
-    facebook: 'bx bxl-facebook',
-    twitter: 'bx bxl-twitter',
-    linkedin: 'bx bxl-linkedin'
-  }
-  return icons[platform] || 'bx bx-globe'
-}
-
-const getWeekPercentage = (count) => {
-  if (!props.preview?.total_posts) return 0
-  return (count / props.preview.total_posts) * 100
-}
+const fallbackMessage = computed(() => {
+  if (!campaignStore.intelligenceMeta?.fallback) return ''
+  return (
+    campaignStore.intelligenceMeta?.message ||
+    t('campaigns.preview_fallback_description')
+  )
+})
 
 const generatePreview = async () => {
+  loading.value = true
+  
   try {
-    // Prepare data for preview generation
-    const previewData = {
-      business_type: props.wizardData.business_type,
-      product_name: props.wizardData.product_name,
-      description: props.wizardData.description,
-      campaign_goal: props.wizardData.campaign_goal,
-      target_audience: props.wizardData.target_audience,
-      platforms: props.wizardData.platforms,
-      duration_weeks: props.wizardData.duration_weeks,
-      posts_per_week: props.wizardData.posts_per_week,
-      brand_colors: props.wizardData.brand_colors,
-      brand_voice: props.wizardData.brand_voice,
-      mode: props.wizardData.mode || 'quick'
+    if (!props.campaignUuid) {
+      throw new Error('missing-campaign-uuid')
     }
-    
-    await campaignStore.generatePreview(previewData)
-    toast.success('Preview generated successfully!')
+
+    await campaignStore.generateIntelligence({
+      campaign_uuid: props.campaignUuid,
+      mode: props.wizardData.mode
+    })
+    if (campaignStore.intelligenceMeta?.fallback) {
+      toastInfo(t('campaigns.preview_fallback_toast'))
+    }
   } catch (error) {
-    toast.error(error.message || 'Failed to generate preview')
+    if (error.message === 'missing-campaign-uuid') {
+      toastError('يرجى إكمال الخطوات السابقة قبل إنشاء المعاينة.')
+    } else {
+      console.error('Failed to generate intelligence:', error)
+      toastError(t('campaigns.preview_error_generic'))
+    }
+  } finally {
+    loading.value = false
   }
 }
 
-const handleGenerate = () => {
+const regeneratePreview = async () => {
+  await generatePreview()
+}
+
+const confirmGenerate = () => {
   emit('generate')
 }
 
-const handleBack = () => {
-  emit('back')
+const getLanguageName = (code) => {
+  const names = {
+    'ar': 'العربية',
+    'en': 'English',
+    'fr': 'Français',
+    'it': 'Italiano',
+    'es': 'Español',
+    'de': 'Deutsch',
+    'zh': '中文'
+  }
+  return names[code] || code
 }
 
-// Lifecycle
 onMounted(() => {
-  // Auto-generate preview when component mounts
-  if (!props.preview && !props.loading) {
+  // Auto-generate preview if wizard data is complete and campaign exists
+  if (
+    props.campaignUuid &&
+    props.wizardData.business_type &&
+    props.wizardData.product_name &&
+    props.wizardData.description
+  ) {
     generatePreview()
   }
 })
 </script>
 
 <style scoped>
-.wizard-step {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.step-header {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.preview-content {
-  background: #f8f9fa;
-  border-radius: 12px;
-  padding: 2rem;
-  margin-bottom: 2rem;
-}
-
-.overview-card {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
+.wizard-step-preview {
   display: flex;
-  align-items: center;
-  gap: 1rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  flex-direction: column;
+  gap: var(--space-5);
 }
 
-.card-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #007bff, #0056b3);
+.fallback-banner-body {
   display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.fallback-banner-body i {
+  font-size: var(--text-xl);
+  color: var(--color-orange-text);
+  margin-top: var(--space-1);
+}
+
+.fallback-title {
+  margin: 0 0 var(--space-1) 0;
+  font-size: var(--text-md);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+}
+
+.fallback-message {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+
+/* Loading State */
+.loading-state {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-size: 1.5rem;
+  padding: var(--space-10);
+  gap: var(--space-4);
 }
 
-.card-content h6 {
-  margin: 0 0 0.25rem 0;
-  font-weight: 600;
-  color: #2c3e50;
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--color-bg-tertiary);
+  border-top-color: var(--color-brand-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
-.card-content p {
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Initial State */
+.initial-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-10);
+  gap: var(--space-4);
+  text-align: center;
+}
+
+.initial-state i {
+  font-size: 64px;
+  color: var(--color-brand-primary);
+}
+
+.initial-state h4 {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
   margin: 0;
-  color: #6c757d;
-  font-size: 0.875rem;
 }
 
-.structure-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1rem;
+.initial-state p {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+  max-width: 400px;
 }
 
-.structure-item {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  text-align: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.structure-value {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #007bff;
-  margin-bottom: 0.5rem;
-}
-
-.structure-label {
-  font-size: 0.875rem;
-  color: #6c757d;
-  font-weight: 500;
-}
-
-.platform-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-}
-
-.platform-stat {
-  background: white;
-  border-radius: 8px;
-  padding: 1rem;
+/* Intelligence Preview */
+.intelligence-preview {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  flex-direction: column;
+  gap: var(--space-5);
 }
 
-.platform-name {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 500;
-}
-
-.platform-name i {
-  font-size: 1.25rem;
-  color: #007bff;
-}
-
-.platform-count {
-  font-weight: 600;
-  color: #007bff;
-}
-
-.themes-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.theme-tag {
-  background: #007bff;
+/* Summary Card */
+.summary-card {
+  background: linear-gradient(135deg, var(--color-brand-primary), var(--color-blue-text));
   color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.875rem;
-  font-weight: 500;
 }
 
-.topics-list {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.topic-item {
+.summary-card .card-title {
+  color: white;
   display: flex;
   align-items: center;
-  padding: 0.75rem;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  gap: var(--space-2);
 }
 
-.distribution-chart {
+.summary-grid {
   display: grid;
-  gap: 1rem;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
 }
 
-.week-bar {
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.summary-item .label {
+  font-size: var(--text-xs);
+  opacity: 0.9;
+}
+
+.summary-item .value {
+  font-size: var(--text-md);
+  font-weight: var(--font-semibold);
+}
+
+/* KPIs */
+.kpis-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+}
+
+.kpi-card {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--space-3);
 }
 
-.week-label {
-  min-width: 80px;
-  font-weight: 500;
-  color: #495057;
+.kpi-card i {
+  font-size: 32px;
+  opacity: 0.9;
 }
 
-.week-progress {
-  flex: 1;
-  height: 20px;
-  background: #e9ecef;
-  border-radius: 10px;
+.kpi-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.kpi-label {
+  font-size: var(--text-xs);
+  opacity: 0.9;
+}
+
+.kpi-value {
+  font-size: var(--text-md);
+  font-weight: var(--font-bold);
+}
+
+/* Language Analysis */
+.language-analysis-card .analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+.analysis-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.analysis-item .label {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.analysis-item .value {
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  font-weight: var(--font-medium);
+}
+
+.language-badges {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* Phases Section */
+.section-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.phases-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.phase-details {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  position: relative;
 }
 
-.week-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #007bff, #0056b3);
-  border-radius: 10px;
-  transition: width 0.3s ease;
+.phase-summary {
+  padding: var(--space-4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--color-bg-secondary);
+  transition: var(--transition-fast);
+  user-select: none;
 }
 
-.week-count {
-  min-width: 40px;
-  text-align: center;
-  font-weight: 600;
-  color: #007bff;
+.phase-summary:hover {
+  background: var(--color-bg-hover);
 }
 
-.loading-state,
-.error-state {
-  text-align: center;
-  padding: 3rem 1rem;
+.phase-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
 }
 
-.step-actions {
-  border-top: 1px solid #e9ecef;
-  padding-top: 1.5rem;
+.phase-number {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--color-brand-primary);
+  background: var(--color-blue-bg);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
 }
 
-.btn {
-  border-radius: 8px;
-  padding: 0.75rem 2rem;
-  font-weight: 500;
-  transition: all 0.2s ease;
+.phase-name {
+  font-size: var(--text-md);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
 }
 
-.btn-primary {
-  background: linear-gradient(135deg, #007bff, #0056b3);
-  border: none;
+.phase-content {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 }
 
-.btn-primary:hover {
-  background: linear-gradient(135deg, #0056b3, #004085);
-  transform: translateY(-1px);
+.phase-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
 }
 
-.btn-outline-primary {
-  border-color: #007bff;
-  color: #007bff;
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
-.btn-outline-primary:hover {
-  background: #007bff;
-  border-color: #007bff;
+.info-item .label {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
 }
 
-.btn-outline-secondary {
-  border-color: #6c757d;
-  color: #6c757d;
+.info-item .value {
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
 }
 
-.btn-outline-secondary:hover {
-  background: #6c757d;
-  border-color: #6c757d;
+.phase-strategy h5,
+.content-mix h5,
+.key-messages h5 {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-2) 0;
 }
 
-@media (max-width: 768px) {
-  .preview-content {
-    padding: 1rem;
-  }
-  
-  .structure-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .platform-stats {
+.phase-strategy p {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.mix-grid {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.mix-item {
+  background: var(--color-bg-secondary);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.mix-type {
+  color: var(--color-text-secondary);
+}
+
+.mix-percentage {
+  color: var(--color-brand-primary);
+  font-weight: var(--font-semibold);
+}
+
+.key-messages ul {
+  margin: 0;
+  padding-left: var(--space-5);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.8;
+}
+
+[dir="rtl"] .key-messages ul {
+  padding-left: 0;
+  padding-right: var(--space-5);
+}
+
+/* Samples Section */
+.samples-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-4);
+}
+
+/* Guidelines */
+.guidelines-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+.guideline-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.guideline-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.color-swatches {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.color-swatch {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-border-light);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.color-swatch:hover {
+  transform: scale(1.1);
+  box-shadow: var(--shadow-md);
+}
+
+/* Metrics Card */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+}
+
+.metric-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.metric-item i {
+  font-size: 32px;
+  color: var(--color-brand-primary);
+}
+
+.metric-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.metric-label {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}
+
+.metric-value {
+  font-size: var(--text-md);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+}
+
+/* Actions */
+.wizard-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.primary-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .summary-grid,
+  .analysis-grid,
+  .phase-info-grid,
+  .guidelines-grid {
     grid-template-columns: 1fr;
   }
   
-  .btn {
-    width: 100%;
+  .kpis-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .samples-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .wizard-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+  
+  .primary-actions {
+    flex-direction: column;
+  }
+  
+  .metrics-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

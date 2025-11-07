@@ -18,8 +18,8 @@ class CampaignPost extends Model
         'design_id',
         'platform',
         'post_type',
-        'content_ar',
-        'content_en',
+        'content',
+        'primary_language',
         'hashtags',
         'media_urls',
         'media_prompts',
@@ -38,9 +38,16 @@ class CampaignPost extends Model
         'base_image_url',
         'is_composed',
         'composition_analysis',
+        // Intelligence System fields
+        'content_brief',
+        'day_number',
+        'day_name',
+        'phase_name',
     ];
 
     protected $casts = [
+        'content' => 'array',
+        'hashtags' => 'array',
         'media_urls' => 'array',
         'media_prompts' => 'array',
         'scheduled_date' => 'date',
@@ -50,6 +57,8 @@ class CampaignPost extends Model
         'composition_layers' => 'array',
         'composition_analysis' => 'array',
         'is_composed' => 'boolean',
+        // Intelligence System casts
+        'content_brief' => 'array',
     ];
 
     /**

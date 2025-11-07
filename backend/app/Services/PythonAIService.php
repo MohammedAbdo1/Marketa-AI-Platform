@@ -55,6 +55,49 @@ class PythonAIService
     }
 
     /**
+     * Generate comprehensive campaign intelligence
+     */
+    public function generateCampaignIntelligence(array $data): array
+    {
+        try {
+            $userId = Auth::check() ? Auth::id() : request()->ip() . '_anonymous';
+            $base = $this->getBaseUrl();
+            
+            Log::info("Generating campaign intelligence", [
+                'user_id' => $userId,
+                'product' => $data['product_name'] ?? null
+            ]);
+            
+            $response = Http::timeout($this->timeout)
+                ->withHeaders(['X-User-ID' => (string) $userId])
+                ->post("{$base}/campaign/intelligence", $data);
+
+            if (!$response->successful()) {
+                $errorBody = $response->body();
+                $statusCode = $response->status();
+                
+                if ($statusCode === 429) {
+                    Log::warning("Rate limit exceeded for intelligence generation", [
+                        'user_id' => $userId,
+                        'status' => $statusCode
+                    ]);
+                    throw new Exception("Rate limit exceeded. Please wait a moment and try again.");
+                }
+                
+                throw new Exception("AI Service error (HTTP {$statusCode}): " . $errorBody);
+            }
+
+            return $response->json();
+        } catch (Exception $e) {
+            Log::error("Campaign intelligence generation failed", [
+                'error' => $e->getMessage(),
+                'data' => $data
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
      * Generate campaign preview structure
      */
     public function generateCampaignPreview(array $data): array

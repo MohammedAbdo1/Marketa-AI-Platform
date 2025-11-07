@@ -1,6 +1,12 @@
 import axios from '@/axios'
 
 export const campaignService = {
+  // Draft listing (resumable wizard)
+  async getDrafts() {
+    const response = await axios.get('/campaign-drafts')
+    return response.data
+  },
+
   // Get all campaigns
   async getCampaigns(params = {}) {
     const response = await axios.get('/campaigns', { params })
@@ -33,7 +39,17 @@ export const campaignService = {
 
   // Generate campaign preview
   async generatePreview(data) {
-    const response = await axios.post('/campaigns/preview', data)
+    const response = await axios.post('/campaigns/preview', data, {
+      timeout: 120000
+    })
+    return response.data
+  },
+
+  // Generate comprehensive campaign intelligence
+  async generateIntelligence(data) {
+    const response = await axios.post('/campaigns/preview', data, {
+      timeout: 120000
+    })
     return response.data
   },
 

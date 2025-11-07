@@ -2,15 +2,6 @@
   <div class="campaign-details-enhanced">
     <!-- Header -->
     <div class="page-header">
-      <nav class="breadcrumb">
-        <button class="breadcrumb-home" @click="$router.push('/dashboard/campaigns')">
-          <i class="bx bx-chevron-right"></i>
-          {{ $t('campaigns.details.breadcrumb_home') }}
-        </button>
-        <span class="breadcrumb-separator">/</span>
-        <span class="breadcrumb-current">{{ campaign?.name || $t('campaigns.details.title') }}</span>
-      </nav>
-
       <div class="header-content">
         <h1 class="page-title">{{ campaign?.name || $t('campaigns.details.title') }}</h1>
         <div class="header-meta">
@@ -27,10 +18,23 @@
           </span>
         </div>
       </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary" @click="$router.push('/dashboard/campaigns')">
+          <i class="bx bx-arrow-back"></i>
+          {{ $t('common.back') }}
+        </button>
+        <button class="btn btn-primary" @click="rebuildCampaign" :disabled="loading">
+          <i class="bx bx-refresh"></i>
+          {{ $t('campaigns.details.rebuild') }}
+        </button>
+      </div>
     </div>
 
     <!-- Loading State -->
-    <LoadingSpinner v-if="loading" size="lg" />
+    <div v-if="loading" class="loading-state">
+      <div class="spinner"></div>
+      <p>{{ $t('common.loading') }}</p>
+    </div>
 
     <!-- Content -->
     <div v-else class="campaign-content">
@@ -166,7 +170,7 @@
       </div>
 
       <!-- Content Tab -->
-      <div v-show="!loading && activeTab === 'content'" class="tab-panel">
+      <div v-show="activeTab === 'content'" class="tab-panel">
         <div class="card posts-controls">
           <div class="card-body controls-grid">
             <div class="control">
@@ -231,7 +235,6 @@
           <div v-for="post in filteredPosts" :key="post.id" class="post-card-wrapper">
             <div class="post-card">
               <div class="post-image">
-                  <!-- TODO: Replace with live design frame component once editor rendering is ready -->
                 <img 
                   v-if="post.media_urls && post.media_urls.length > 0"
                   :src="post.media_urls[0]" 
@@ -307,8 +310,50 @@
         </div>
       </div>
 
+      <!-- Assets Tab -->
+      <div v-show="activeTab === 'assets'" class="tab-panel">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">
+              <i class="bx bx-images"></i>
+              {{ $t('campaigns.details.assets_library') }}
+            </h3>
+          </div>
+          <div class="card-body">
+            <div v-if="!assetLibrary.length" class="empty-state">
+              <i class="bx bx-photo-album"></i>
+              <p>{{ $t('campaigns.details.no_assets') }}</p>
+            </div>
+            <div v-else class="assets-grid">
+              <div v-for="asset in assetLibrary" :key="asset.url" class="asset-card">
+                <div class="asset-image">
+                  <img :src="asset.url" :alt="asset.caption" />
+                </div>
+                <div class="asset-meta">
+                  <p class="asset-caption">{{ asset.caption }}</p>
+                  <div class="asset-tags">
+                    <span class="meta-tag">{{ asset.platform }}</span>
+                    <span class="meta-tag">{{ $t('campaigns.week') }} {{ asset.week }}</span>
+                  </div>
+                  <div class="asset-actions">
+                    <a :href="asset.url" class="btn btn-sm btn-secondary" target="_blank" rel="noopener">
+                      <i class="bx bx-download"></i>
+                      {{ $t('campaigns.details.download') }}
+                    </a>
+                    <button class="btn btn-sm btn-ghost" @click="copyToClipboard(asset.url)">
+                      <i class="bx bx-copy"></i>
+                      {{ $t('campaigns.details.copy_link') }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Insights Tab -->
-      <div v-show="!loading && activeTab === 'insights'" class="tab-panel">
+      <div v-show="activeTab === 'insights'" class="tab-panel">
         <div class="card">
           <div class="card-header">
             <h3 class="card-title">
@@ -353,7 +398,6 @@ import { useToast } from 'vue-toastification'
 import { useCampaignStore } from '@/stores/campaign'
 import TimelineVisualization from '@/components/campaigns/TimelineVisualization.vue'
 import SamplePostCard from '@/components/campaigns/SamplePostCard.vue'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -374,6 +418,7 @@ const selectedBrief = ref(null)
 const tabs = computed(() => [
   { value: 'overview', label: t('campaigns.tabs.overview'), icon: 'bx bx-grid' },
   { value: 'content', label: t('campaigns.tabs.content'), icon: 'bx bx-message-square-detail' },
+  { value: 'assets', label: t('campaigns.tabs.assets'), icon: 'bx bx-images' },
   { value: 'insights', label: t('campaigns.tabs.insights'), icon: 'bx bx-line-chart' },
 ])
 
@@ -435,6 +480,33 @@ const filteredPosts = computed(() => {
   })
 })
 
+const assetLibrary = computed(() => {
+  const library = []
+
+  posts.value.forEach((post) => {
+    const media = post.media_urls || []
+    media.forEach((url) => {
+      if (url) {
+        library.push({
+          url,
+          platform: post.platform,
+          week: post.week_number,
+          caption: getPostContent(post).slice(0, 120),
+        })
+      }
+    })
+  })
+
+  const unique = new Map()
+  library.forEach((asset) => {
+    if (!unique.has(asset.url)) {
+      unique.set(asset.url, asset)
+    }
+  })
+
+  return Array.from(unique.values())
+})
+
 const formatDateRange = (start, end) => {
   if (!start || !end) return ''
   try {
@@ -487,6 +559,16 @@ const editPost = (post) => {
 
 const showBrief = (post) => {
   selectedBrief.value = post
+}
+
+const copyToClipboard = async (value) => {
+  try {
+    await navigator.clipboard.writeText(value)
+    toast.success(t('campaigns.details.link_copied'))
+  } catch (error) {
+    console.error('Failed to copy link', error)
+    toast.error(t('campaigns.details.copy_failed'))
+  }
 }
 
 const getPostContent = (post) => {
@@ -548,53 +630,14 @@ onMounted(loadCampaign)
 
 .page-header {
   display: flex;
-  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: var(--space-4);
   margin-bottom: var(--space-6);
-  text-align: start;
-  align-items: flex-start;
-}
-
-.breadcrumb {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-  color: var(--color-text-tertiary);
-  text-align: start;
-}
-
-.breadcrumb-home {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  border: none;
-  background: none;
-  color: inherit;
-  cursor: pointer;
-}
-
-.breadcrumb-home:hover {
-  color: var(--color-brand-primary);
-}
-
-.breadcrumb-separator {
-  color: var(--color-text-tertiary);
-}
-
-.breadcrumb-current {
-  color: var(--color-text-secondary);
-  font-weight: var(--font-medium);
 }
 
 .header-content {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: flex-start;
-  text-align: start;
-  width: 100%;
-  gap: var(--space-3);
+  flex: 1;
 }
 
 .page-title {
@@ -608,8 +651,6 @@ onMounted(loadCampaign)
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
-  justify-content: flex-start;
-  align-items: center;
   color: var(--color-text-secondary);
   font-size: var(--text-sm);
 }
@@ -625,6 +666,36 @@ onMounted(loadCampaign)
   border-radius: var(--radius-sm);
   background: var(--color-bg-secondary);
   text-transform: capitalize;
+}
+
+.header-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-10);
+  color: var(--color-text-secondary);
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 4px solid var(--color-bg-tertiary);
+  border-top-color: var(--color-brand-primary);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .campaign-content {
@@ -977,6 +1048,62 @@ onMounted(loadCampaign)
   display: flex;
   gap: var(--space-2);
   align-items: flex-start;
+}
+
+.assets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-4);
+}
+
+.asset-card {
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.asset-image {
+  width: 100%;
+  padding-top: 65%;
+  position: relative;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.asset-image img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.asset-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.asset-caption {
+  font-size: var(--text-sm);
+  margin: 0;
+  color: var(--color-text-primary);
+}
+
+.asset-tags {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.asset-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
 }
 
 .insights-placeholder {

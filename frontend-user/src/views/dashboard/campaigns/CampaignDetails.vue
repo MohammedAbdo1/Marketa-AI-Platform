@@ -231,10 +231,16 @@
           <div v-for="post in filteredPosts" :key="post.id" class="post-card-wrapper">
             <div class="post-card">
               <div class="post-image">
-                  <!-- TODO: Replace with live design frame component once editor rendering is ready -->
-                <img 
-                  v-if="post.media_urls && post.media_urls.length > 0"
-                  :src="post.media_urls[0]" 
+                <CanvasPreview
+                  v-if="hasComposition(post)"
+                  :composition-data="getCompositionData(post)"
+                  :width="getCompositionDimensions(post).width"
+                  :height="getCompositionDimensions(post).height"
+                  fit-parent
+                />
+                <img
+                  v-else-if="post.media_urls && post.media_urls.length > 0"
+                  :src="post.media_urls[0]"
                   :alt="getPostContent(post)"
                 />
                 <div v-else class="placeholder-image">
@@ -353,6 +359,7 @@ import { useToast } from 'vue-toastification'
 import { useCampaignStore } from '@/stores/campaign'
 import TimelineVisualization from '@/components/campaigns/TimelineVisualization.vue'
 import SamplePostCard from '@/components/campaigns/SamplePostCard.vue'
+import CanvasPreview from '@/components/designs/CanvasPreview.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 
 const route = useRoute()
@@ -449,15 +456,50 @@ const formatDateRange = (start, end) => {
   }
 }
 
+const shouldResumeWizard = (campaign) => {
+  if (!campaign) return false
+  const status = (campaign.status || '').toLowerCase()
+  const generationStatus = (campaign.generation_status || '').toLowerCase()
+  const incompleteStatuses = ['draft', 'pending', 'building']
+  const incompleteGeneration = ['pending', 'generating', 'failed']
+  const incompleteFlag = campaign.is_complete === false
+  const missingPosts =
+    !Array.isArray(campaign.posts) || campaign.posts.length === 0
+
+  return (
+    incompleteStatuses.includes(status) ||
+    incompleteGeneration.includes(generationStatus) ||
+    incompleteFlag ||
+    missingPosts
+  )
+}
+
+const redirectToWizard = (campaign) => {
+  const step = Number(campaign?.wizard_step || 1)
+  const safeStep = Math.min(Math.max(isNaN(step) ? 1 : step, 1), 4)
+  router.replace({
+    name: 'campaign-wizard',
+    query: {
+      campaign: campaign.uuid,
+      step: safeStep,
+    },
+  })
+}
+
 const loadCampaign = async () => {
   try {
     loading.value = true
     const uuid = route.params.uuid
     const response = await campaignStore.fetchCampaign(uuid)
-    campaign.value = response?.data || response
+    campaign.value = response
 
-    const rawPosts = Array.isArray(campaign.value?.posts) ? campaign.value.posts : []
-    posts.value = rawPosts
+     if (shouldResumeWizard(response)) {
+       loading.value = false
+       redirectToWizard(response)
+       return
+     }
+
+    posts.value = Array.isArray(response?.posts) ? response.posts : []
   } catch (error) {
     console.error('Failed to load campaign:', error)
     toast.error(t('campaigns.details.load_failed'))
@@ -482,7 +524,44 @@ const rebuildCampaign = async () => {
 }
 
 const editPost = (post) => {
-  router.push({ name: 'posts.edit', params: { id: post.id } })
+  const targetUuid =
+    post?.creative_asset_uuid || post?.creative_asset?.uuid || post?.uuid
+
+  if (targetUuid && typeof window !== 'undefined') {
+    const editorWindow = window.open(`/editor/${targetUuid}`, '_blank', 'noopener')
+
+    if (editorWindow) {
+      const handler = async (event) => {
+        if (
+          event.origin === window.location.origin &&
+          event.data?.type === 'creative-asset:updated' &&
+          event.data?.payload?.creative_asset_uuid === targetUuid
+        ) {
+          await loadCampaign()
+          window.removeEventListener('message', handler)
+        }
+      }
+
+      window.addEventListener('message', handler)
+
+      const pollTimer = setInterval(async () => {
+        if (editorWindow.closed) {
+          clearInterval(pollTimer)
+          window.removeEventListener('message', handler)
+          await loadCampaign()
+        }
+      }, 1500)
+    }
+
+    return
+  }
+
+  const fallbackId = post?.uuid || post?.id
+  if (fallbackId) {
+    router.push({ name: 'posts.edit', params: { uuid: fallbackId } })
+  } else {
+    toast.error(t('campaigns.details.load_failed'))
+  }
 }
 
 const showBrief = (post) => {
@@ -521,6 +600,64 @@ const getHashtags = (post) => {
   }
 
   return []
+}
+
+const resolvePostComposition = (post) => {
+  if (!post) return null
+  const raw =
+    post.composition_layers ??
+    (Array.isArray(post.content?.composition_layers)
+      ? post.content.composition_layers
+      : post.content?.composition_layers)
+
+  if (!raw) return null
+
+  if (Array.isArray(raw)) {
+    return raw
+  }
+
+  if (typeof raw === 'object') {
+    if (Array.isArray(raw.layers)) {
+      return raw.layers
+    }
+    const keys = Object.keys(raw)
+    const numeric = keys.length > 0 && keys.every((key) => !Number.isNaN(Number(key)))
+    if (numeric) {
+      return Object.values(raw)
+    }
+  }
+
+  return null
+}
+
+const hasComposition = (post) => {
+  const layers = resolvePostComposition(post)
+  return Array.isArray(layers) && layers.length > 0
+}
+
+const getCompositionDimensions = (post) => {
+  const width =
+    post.content?.dimensions?.width ||
+    post.settings?.dimensions?.width ||
+    post.width ||
+    1080
+  const height =
+    post.content?.dimensions?.height ||
+    post.settings?.dimensions?.height ||
+    post.height ||
+    1080
+  return { width, height }
+}
+
+const getCompositionData = (post) => {
+  const layers = resolvePostComposition(post)
+  if (!Array.isArray(layers) || layers.length === 0) return null
+
+  const { width, height } = getCompositionDimensions(post)
+  return {
+    layers,
+    dimensions: { width, height }
+  }
 }
 
 const getPlatformIcon = (platform) => {
@@ -862,6 +999,11 @@ onMounted(loadCampaign)
   position: relative;
   padding-top: 65%;
   background: var(--color-bg-secondary);
+}
+
+.post-card .post-image .canvas-preview {
+  position: absolute;
+  inset: 0;
 }
 
 .post-card .post-image img {

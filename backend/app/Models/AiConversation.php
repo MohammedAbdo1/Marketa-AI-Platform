@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Models\CreativeAsset;
 
 class AiConversation extends Model
 {
@@ -73,9 +74,10 @@ class AiConversation extends Model
     public function designs()
     {
         // Custom query since we're matching by UUID string
-        return Design::where('source_id', $this->uuid)
-                     ->where('source_type_model', 'ai_conversation')
-                     ->get();
+        return CreativeAsset::designs()
+            ->where('source_id', $this->uuid)
+            ->where('source_model', 'ai_conversation')
+            ->get();
     }
 
     /**
@@ -164,12 +166,14 @@ class AiConversation extends Model
             'messages' => $this->messages->map(function ($message) {
                 return $message->exportForFrontend();
             }),
-            'designs' => $designs->map(function ($design) {
+            'designs' => $designs->map(function (CreativeAsset $design) {
                 return [
                     'uuid' => $design->uuid,
                     'title' => $design->title,
                     'thumbnail_url' => $design->thumbnail_url,
+                    'preview_url' => $design->preview_url,
                     'export_url' => $design->export_url,
+                    'design_type' => $design->subtype,
                 ];
             }),
             'created_at' => $this->created_at,

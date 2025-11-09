@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Design;
+use App\Models\CreativeAsset;
 use App\Models\UserFavorite;
+use App\Services\CreativeAssetService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,9 @@ use Illuminate\Support\Facades\Validator;
 
 class FavoriteController extends Controller
 {
+    public function __construct(protected CreativeAssetService $creativeAssetService)
+    {
+    }
     /**
      * Get user's favorites grouped by sections
      */
@@ -40,23 +44,31 @@ class FavoriteController extends Controller
                 'order' => $section->order,
                 'designs' => $favorites->where('section_id', $section->id)
                     ->map(function ($favorite) {
-                        $design = $favorite->design;
-                        $design->is_favorited = true;
-                        $design->favorite_order = $favorite->order;
+                        if (!$favorite->design) {
+                            return null;
+                        }
+                        $design = $this->creativeAssetService->formatDesignAsset($favorite->design, $userId);
+                        $design['is_favorited'] = true;
+                        $design['favorite_order'] = $favorite->order;
                         return $design;
                     })
+                    ->filter()
                     ->values()
             ];
         });
 
         // Get unsectioned favorites
         $unsectioned = $favorites->whereNull('section_id')
-            ->map(function ($favorite) {
-                $design = $favorite->design;
-                $design->is_favorited = true;
-                $design->favorite_order = $favorite->order;
+            ->map(function ($favorite) use ($userId) {
+                if (!$favorite->design) {
+                    return null;
+                }
+                $design = $this->creativeAssetService->formatDesignAsset($favorite->design, $userId);
+                $design['is_favorited'] = true;
+                $design['favorite_order'] = $favorite->order;
                 return $design;
             })
+            ->filter()
             ->values();
 
         return response()->json([
@@ -71,7 +83,7 @@ class FavoriteController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'design_id' => 'required|exists:designs,id',
+            'creative_asset_id' => 'required|exists:creative_assets,id',
             'section_id' => 'nullable|exists:favorite_sections,id',
         ]);
 
@@ -84,9 +96,11 @@ class FavoriteController extends Controller
 
         $userId = Auth::id();
 
-        // Check if already favorited
+        $asset = CreativeAsset::designs()
+            ->findOrFail($request->creative_asset_id);
+
         $existing = UserFavorite::where('user_id', $userId)
-            ->where('design_id', $request->design_id)
+            ->where('creative_asset_id', $request->creative_asset_id)
             ->first();
 
         if ($existing) {
@@ -102,7 +116,7 @@ class FavoriteController extends Controller
 
         $favorite = UserFavorite::create([
             'user_id' => $userId,
-            'design_id' => $request->design_id,
+            'creative_asset_id' => $request->creative_asset_id,
             'section_id' => $request->section_id,
             'order' => $maxOrder + 1,
         ]);
@@ -123,7 +137,7 @@ class FavoriteController extends Controller
         $userId = Auth::id();
 
         $favorite = UserFavorite::where('user_id', $userId)
-            ->where('design_id', $designId)
+            ->where('creative_asset_id', $designId)
             ->first();
 
         if (!$favorite) {
@@ -159,7 +173,7 @@ class FavoriteController extends Controller
         $userId = Auth::id();
 
         $favorite = UserFavorite::where('user_id', $userId)
-            ->where('design_id', $designId)
+            ->where('creative_asset_id', $designId)
             ->first();
 
         if (!$favorite) {

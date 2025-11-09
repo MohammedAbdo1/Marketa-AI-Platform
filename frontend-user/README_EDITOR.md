@@ -185,11 +185,8 @@ Features:
 ```php
 // تم إنشاؤها مسبقاً في Backend
 
-GET    /campaign-posts/{id}/layers        // Export layers
-POST   /campaign-posts/{id}/layers/import // Import/Save layers
-POST   /campaign-posts/{id}/layers        // Add layer
-PUT    /campaign-posts/{id}/layers/{idx}  // Update layer
-DELETE /campaign-posts/{id}/layers/{idx}  // Delete layer
+GET    /creative-assets/{uuid}            // Fetch composition data
+PUT    /creative-assets/{uuid}            // Persist composition updates
 ```
 
 ---
@@ -236,7 +233,7 @@ fabric.Text.prototype.fontFamily = 'Cairo'; // أو أي خط
 F12 → Console → ابحث عن أخطاء
 
 # تحقق من API:
-Network → ابحث عن /campaign-posts/{id}/layers
+Network → ابحث عن /creative-assets/{uuid}
 ```
 
 ### الحفظ التلقائي لا يعمل؟

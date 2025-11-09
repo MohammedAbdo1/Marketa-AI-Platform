@@ -10,13 +10,15 @@
 
 ### 🗄️ **1. Backend (Laravel)**
 
-#### **Migrations (3 ملفات جديدة):**
-- ✅ `2025_11_04_000001_add_trashed_at_to_designs.php` - عمود trashed_at
-- ✅ `2025_11_04_000002_create_favorite_sections_table.php` - جدول الأقسام
+#### **Migrations**
+- ✅ `2025_10_25_000000_create_creative_assets_table.php` - جدول موحد لكل الأصول
+- ✅ `2025_11_02_000003_create_campaign_creative_asset_table.php` - Pivot مع روابط مباشرة للكريتف أسِتس
 - ✅ `2025_11_04_000003_create_user_favorites_table.php` - جدول المفضلة
+- ✅ `2025_11_04_000002_create_favorite_sections_table.php` - جدول الأقسام
 
-#### **Models (3 ملفات):**
-- ✅ `Design.php` - تحديث مع 6 methods جديدة
+- ✅ حذف `Design.php` والاستعاضة عنه بـ `CreativeAsset.php`
+- ✅ `FavoriteSection.php` - نموذج جديد
+- ✅ `UserFavorite.php` - نموذج جديد
 - ✅ `FavoriteSection.php` - نموذج جديد
 - ✅ `UserFavorite.php` - نموذج جديد
 
@@ -143,7 +145,7 @@ is_favorite BOOLEAN
 ✅ **طريقة صحيحة (SaaS):**
 ```sql
 -- جدول منفصل
-user_favorites (user_id, design_id, section_id)
+user_favorites (user_id, creative_asset_id, section_id)
 ```
 **المزايا:**
 - ✅ كل مستخدم له مفضلاته الخاصة

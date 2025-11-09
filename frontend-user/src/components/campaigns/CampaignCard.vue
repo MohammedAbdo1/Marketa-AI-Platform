@@ -141,12 +141,45 @@ const displayPlatforms = computed(() => {
     : ['instagram', 'facebook', 'x']  // ← افتراضي للعرض فقط
 })
 
+const INCOMPLETE_STATUSES = ['draft', 'pending', 'building']
+const INCOMPLETE_GENERATION = ['pending', 'generating', 'failed']
+
+const shouldResumeWizard = computed(() => {
+  const status = (props.campaign.status || '').toLowerCase()
+  const generationStatus = (props.campaign.generation_status || '').toLowerCase()
+  const incompleteStatus = INCOMPLETE_STATUSES.includes(status)
+  const incompleteGeneration = INCOMPLETE_GENERATION.includes(generationStatus)
+  const incompleteFlag = props.campaign.is_complete === false
+  const missingPosts = !props.campaign.posts || props.campaign.posts.length === 0
+
+  return incompleteStatus || incompleteGeneration || incompleteFlag || missingPosts
+})
+
+const getResumeStep = () => {
+  const step = Number(props.campaign.wizard_step || 1)
+  return Math.min(Math.max(step, 1), 4)
+}
+
+const openWizard = () => {
+  router.push({
+    name: 'campaign-wizard',
+    query: {
+      campaign: props.campaign.uuid,
+      step: getResumeStep(),
+    },
+  })
+}
+
 const openDetails = () => {
+  if (shouldResumeWizard.value) {
+    openWizard()
+    return
+  }
   router.push(`/dashboard/campaigns/${props.campaign.uuid}`)
 }
 
 const editCampaign = () => {
-  router.push(`/dashboard/campaigns/${props.campaign.uuid}/edit`)
+  openWizard()
   menuOpen.value = false
 }
 
@@ -243,7 +276,12 @@ const getPlatformName = (platform) => {
 }
 
 const getPostsCount = () => {
-  return props.campaign.posts?.length || props.campaign.generated_posts?.length || 0
+  return (
+    props.campaign.posts?.length ||
+    props.campaign.creative_assets?.length ||
+    props.campaign.generated_posts?.length ||
+    0
+  )
 }
 
 const getLanguagesText = () => {

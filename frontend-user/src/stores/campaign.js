@@ -2,6 +2,88 @@ import { defineStore } from 'pinia'
 import { campaignService } from '@/services/campaignService'
 import { io } from 'socket.io-client'
 
+const normalizeArrayValue = (value) => {
+  if (Array.isArray(value)) return value
+
+  if (typeof value === 'string' && value.trim().length > 0) {
+    try {
+      const parsed = JSON.parse(value)
+      if (Array.isArray(parsed)) return parsed
+    } catch (error) {
+      // ignore parse error and fall back to splitting
+    }
+
+    return value
+      .split(/[,\\s]+/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.values(value)
+      .flat()
+      .filter(Boolean)
+  }
+
+  return []
+}
+
+const normalizePostPayload = (post) => {
+  if (!post || typeof post !== 'object') return {}
+
+  const mediaUrls = normalizeArrayValue(post.media_urls)
+  if (mediaUrls.length === 0) {
+    const fallbackUrl =
+      post.creative_asset?.preview_url ||
+      post.creative_asset?.thumbnail_url ||
+      post.creative_asset?.storage_path ||
+      post.base_image_url ||
+      post.final_image_url
+
+    if (fallbackUrl) {
+      mediaUrls.push(fallbackUrl)
+    }
+  }
+
+  let hashtags = []
+  if (Array.isArray(post.hashtags)) {
+    hashtags = post.hashtags
+  } else if (post.hashtags && typeof post.hashtags === 'object') {
+    const primary = post.primary_language || 'ar'
+    const primaryTags = post.hashtags[primary]
+    hashtags = Array.isArray(primaryTags)
+      ? primaryTags
+      : Object.values(post.hashtags)
+          .flat()
+          .filter(Boolean)
+  } else {
+    hashtags = normalizeArrayValue(post.hashtags)
+  }
+
+  return {
+    ...post,
+    media_urls: mediaUrls,
+    hashtags,
+    creative_asset_uuid:
+      post.creative_asset_uuid || post.creative_asset?.uuid || post.uuid,
+    creative_asset_id:
+      post.creative_asset_id || post.creative_asset?.id || post.id,
+  }
+}
+
+const normalizeCampaignPayload = (payload = {}) => {
+  const posts = Array.isArray(payload.posts) ? payload.posts : []
+  const creativeAssets = Array.isArray(payload.creative_assets)
+    ? payload.creative_assets
+    : []
+
+  return {
+    ...payload,
+    posts: posts.map(normalizePostPayload),
+    creative_assets: creativeAssets,
+  }
+}
+
 export const useCampaignStore = defineStore('campaign', {
   state: () => ({
     campaigns: [],
@@ -43,7 +125,7 @@ export const useCampaignStore = defineStore('campaign', {
     async fetchDrafts() {
       this.loading = true
       this.error = null
-      
+
       try {
         const response = await campaignService.getDrafts()
         this.drafts = response.data || []
@@ -60,10 +142,12 @@ export const useCampaignStore = defineStore('campaign', {
     async fetchCampaigns(params = {}) {
       this.loading = true
       this.error = null
-      
+
       try {
         const response = await campaignService.getCampaigns(params)
-        this.campaigns = response.data.data || []
+        this.campaigns = response.data.data
+          ? response.data.data.map(normalizeCampaignPayload)
+          : []
         return response.data
       } catch (error) {
         this.error = error.response?.data?.message || 'Failed to fetch campaigns'
@@ -77,11 +161,12 @@ export const useCampaignStore = defineStore('campaign', {
     async fetchCampaign(uuid) {
       this.loading = true
       this.error = null
-      
+
       try {
         const response = await campaignService.getCampaign(uuid)
-        this.currentCampaign = response.data
-        return response.data
+        const normalized = normalizeCampaignPayload(response.data)
+        this.currentCampaign = normalized
+        return normalized
       } catch (error) {
         this.error = error.response?.data?.message || 'Failed to fetch campaign'
         throw error
@@ -94,20 +179,21 @@ export const useCampaignStore = defineStore('campaign', {
     async createCampaign(data) {
       this.loading = true
       this.error = null
-      
+
       try {
         const response = await campaignService.createCampaign(data)
-        this.campaigns.unshift(response.data)
+        const normalized = normalizeCampaignPayload(response.data)
+        this.campaigns.unshift(normalized)
         // Ensure the draft list stays in sync for resume dialog
-        if (response.data?.status === 'draft') {
-          const existingIndex = this.drafts.findIndex(draft => draft.uuid === response.data.uuid)
+        if (normalized?.status === 'draft') {
+          const existingIndex = this.drafts.findIndex(draft => draft.uuid === normalized.uuid)
           if (existingIndex !== -1) {
-            this.drafts.splice(existingIndex, 1, response.data)
+            this.drafts.splice(existingIndex, 1, normalized)
           } else {
-            this.drafts.unshift(response.data)
+            this.drafts.unshift(normalized)
           }
         }
-        return response.data
+        return normalized
       } catch (error) {
         this.error = error.response?.data?.message || 'Failed to create campaign'
         throw error
@@ -119,27 +205,28 @@ export const useCampaignStore = defineStore('campaign', {
     // Update campaign
     async updateCampaign(uuid, data) {
       this.error = null
-      
+
       try {
         const response = await campaignService.updateCampaign(uuid, data)
+        const normalized = normalizeCampaignPayload(response.data)
         const index = this.campaigns.findIndex(campaign => campaign.uuid === uuid)
         if (index !== -1) {
-          this.campaigns[index] = response.data
+          this.campaigns[index] = normalized
         }
         if (this.currentCampaign?.uuid === uuid) {
-          this.currentCampaign = response.data
+          this.currentCampaign = normalized
         }
         const draftIndex = this.drafts.findIndex(draft => draft.uuid === uuid)
-        if (response.data?.status === 'draft' || response.data?.status === 'building') {
+        if (normalized?.status === 'draft' || normalized?.status === 'building') {
           if (draftIndex !== -1) {
-            this.drafts.splice(draftIndex, 1, response.data)
+            this.drafts.splice(draftIndex, 1, normalized)
           } else {
-            this.drafts.unshift(response.data)
+            this.drafts.unshift(normalized)
           }
         } else if (draftIndex !== -1) {
           this.drafts.splice(draftIndex, 1)
         }
-        return response.data
+        return normalized
       } catch (error) {
         this.error = error.response?.data?.message || 'Failed to update campaign'
         throw error
@@ -150,7 +237,7 @@ export const useCampaignStore = defineStore('campaign', {
     async deleteCampaign(uuid) {
       this.loading = true
       this.error = null
-      
+
       try {
         await campaignService.deleteCampaign(uuid)
         this.campaigns = this.campaigns.filter(campaign => campaign.uuid !== uuid)
@@ -169,7 +256,7 @@ export const useCampaignStore = defineStore('campaign', {
     async generatePreview(data) {
       this.loading = true
       this.error = null
-      
+
       try {
         const response = await campaignService.generatePreview(data)
         this.preview = response.data ?? null
@@ -186,7 +273,7 @@ export const useCampaignStore = defineStore('campaign', {
     async generateIntelligence(data) {
       this.loading = true
       this.error = null
-      
+
       try {
         const response = await campaignService.generateIntelligence(data)
         const payloadData = response.data
@@ -210,7 +297,7 @@ export const useCampaignStore = defineStore('campaign', {
     async generateCampaign(uuid) {
       this.loading = true
       this.error = null
-      
+
       try {
         const response = await campaignService.generateCampaign(uuid)
         const payload = response?.data || response
@@ -246,13 +333,13 @@ export const useCampaignStore = defineStore('campaign', {
             this.generationStatus = { status: 'failed', progress: 0 }
             throw error
           }
-          
+
           if (attempt === maxRetries) {
             // Stop polling after max retries
             this.generationStatus = { status: 'failed', progress: 0 }
             return null
           }
-          
+
           // Wait before retry
           await new Promise(resolve => setTimeout(resolve, 2000 * attempt))
         }
@@ -264,7 +351,7 @@ export const useCampaignStore = defineStore('campaign', {
     async suggestColors(description) {
       this.loading = true
       this.error = null
-      
+
       try {
         const response = await campaignService.suggestColors(description)
         return response.data
@@ -288,7 +375,7 @@ export const useCampaignStore = defineStore('campaign', {
 
     // Set current campaign
     setCurrentCampaign(campaign) {
-      this.currentCampaign = campaign
+      this.currentCampaign = normalizeCampaignPayload(campaign)
     },
 
     // Initialize Socket.IO connection - Disabled for now
@@ -309,3 +396,5 @@ export const useCampaignStore = defineStore('campaign', {
     }
   }
 })
+
+

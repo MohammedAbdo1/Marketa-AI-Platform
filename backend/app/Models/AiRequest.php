@@ -10,7 +10,7 @@ class AiRequest extends Model
     protected $fillable = [
         'organization_id',
         'campaign_id',
-        'campaign_post_id',
+        'creative_asset_id',
         'request_type',
         'model_used',
         'prompt',
@@ -43,10 +43,10 @@ class AiRequest extends Model
     }
 
     /**
-     * Get the campaign post that owns the AI request.
+     * Get the creative asset that owns the AI request.
      */
-    public function campaignPost(): BelongsTo
+    public function creativeAsset(): BelongsTo
     {
-        return $this->belongsTo(CampaignPost::class);
+        return $this->belongsTo(CreativeAsset::class);
     }
 }

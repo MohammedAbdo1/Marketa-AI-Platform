@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('organization_id')->constrained()->onDelete('cascade');
             $table->foreignId('campaign_id')->nullable()->constrained()->onDelete('cascade');
-            $table->foreignId('campaign_post_id')->nullable()->constrained()->onDelete('cascade');
+            $table->unsignedBigInteger('creative_asset_id')->nullable();
             $table->string('request_type'); // text_generation, image_generation, content_improvement
             $table->string('model_used'); // gpt-4, gpt-3.5-turbo, dall-e-3, etc.
             $table->text('prompt');

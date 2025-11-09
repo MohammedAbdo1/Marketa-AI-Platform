@@ -3,7 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Campaign;
-use App\Models\CampaignPost;
+use App\Services\CreativeAssetService;
 use App\Services\PythonAIService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -65,7 +65,6 @@ class GenerateCampaignPosts implements ShouldQueue
 
             // Poll for completion (with timeout)
             $this->pollForCompletion($aiResponse['task_id'], $aiService);
-
         } catch (Exception $e) {
             // Update campaign status to failed
             $this->campaign->update([
@@ -89,7 +88,7 @@ class GenerateCampaignPosts implements ShouldQueue
     protected function prepareCampaignData(): array
     {
         $brand = $this->campaign->brand;
-        
+
         // Convert target_audience from JSON string to array if needed
         $targetAudience = $this->campaign->target_audience;
         if (is_string($targetAudience)) {
@@ -98,25 +97,25 @@ class GenerateCampaignPosts implements ShouldQueue
         if (!is_array($targetAudience)) {
             $targetAudience = [];
         }
-        
+
         return [
             'campaign_id' => $this->campaign->id,
             'business_type' => $this->campaign->business_type,
             'product_name' => $this->campaign->name,
             'description' => $this->campaign->description,
-            'goal' => $this->campaign->goal, // Changed from campaign_goal to goal
+            'goal' => $this->campaign->goal,
             'target_audience' => $targetAudience,
-            'duration_days' => $this->campaign->duration_days, // Changed from duration_weeks
+            'duration_days' => $this->campaign->duration_days,
             'platforms' => $this->campaign->platforms,
             'posts_per_week' => $this->campaign->posts_per_week,
             'brand_colors' => $brand ? [
                 'primary_color' => $brand->primary_color,
                 'secondary_color' => $brand->secondary_color,
-                'accent_color' => $brand->accent_color
+                'accent_color' => $brand->accent_color,
             ] : null,
             'brand_voice' => $brand ? $brand->brand_voice : null,
             'languages' => $this->campaign->languages ?? ['ar', 'en'],
-            'mode' => $this->campaign->mode ?? 'quick'
+            'mode' => $this->campaign->mode ?? 'quick',
         ];
     }
 
@@ -125,62 +124,21 @@ class GenerateCampaignPosts implements ShouldQueue
      */
     protected function saveGeneratedPosts(array $posts): void
     {
+        /** @var CreativeAssetService $creativeAssetService */
+        $creativeAssetService = app(CreativeAssetService::class);
+
         foreach ($posts as $index => $postData) {
-            // Extract content (flexible multi-language support)
-            $content = $postData['content'] ?? [];
-            $primaryLanguage = $postData['primary_language'] ?? 'ar';
-            
-            // Extract hashtags (flexible multi-language support)
-            $hashtags = $postData['hashtags'] ?? [];
-            
-            // Check if this post needs composition
-            $needsComposition = $postData['needs_composition'] ?? false;
-            $compositionData = null;
-            $baseImageUrl = null;
-            $compositionLayers = null;
-            $compositionAnalysis = null;
-            
-            if ($needsComposition && isset($postData['composition_result'])) {
-                // Post was generated with composition
-                $compositionData = $postData['composition_result'];
-                $baseImageUrl = $compositionData['base_image_url'] ?? null;
-                $compositionLayers = $compositionData['layers'] ?? null;
-                $compositionAnalysis = $postData['composition_analysis'] ?? null;
-            } elseif (isset($postData['composition_layers'])) {
-                // Direct composition data
-                $compositionLayers = $postData['composition_layers'];
-                $baseImageUrl = $postData['base_image_url'] ?? null;
-                $needsComposition = $postData['is_composed'] ?? true;
+            if (!isset($postData['scheduled_date'])) {
+                $postData['scheduled_date'] = $this->calculateScheduledDate($postData);
             }
-            
-            CampaignPost::create([
-                'campaign_id' => $this->campaign->id,
-                'platform' => $postData['platform'] ?? 'instagram',
-                'post_type' => $postData['post_type'] ?? 'image',
-                'content' => $content,
-                'primary_language' => $primaryLanguage,
-                'hashtags' => $hashtags,
-                'media_urls' => isset($postData['image_url']) ? [$postData['image_url']] : 
-                              (isset($compositionData['final_image_url']) ? [$compositionData['final_image_url']] : []),
-                'media_prompts' => isset($postData['image_prompt']) ? [$postData['image_prompt']] : [],
-                'scheduled_date' => $this->calculateScheduledDate($postData),
-                'status' => 'pending',
-                'ai_prompt_used' => $postData['ai_prompt_used'] ?? null,
-                'ai_tokens_used' => $postData['tokens_used'] ?? 0,
-                'ai_cost' => $postData['cost'] ?? 0,
-                'order_number' => $index + 1,
-                'week_number' => $postData['week'] ?? 1,
-                'day_of_week' => $postData['day'] ?? null,
-                'day_number' => $postData['day'] ?? null,
-                'day_name' => $postData['day_name'] ?? null,
-                'phase_name' => $postData['phase'] ?? null,
-                'content_brief' => $postData['content_brief'] ?? null,
-                // Composition fields
-                'base_image_url' => $baseImageUrl,
-                'composition_layers' => $compositionLayers,
-                'is_composed' => $needsComposition,
-                'composition_analysis' => $compositionAnalysis,
-            ]);
+
+            $payload = $creativeAssetService->buildPayloadFromArray(
+                $this->campaign,
+                $postData,
+                $index + 1
+            );
+
+            $creativeAssetService->create($payload);
         }
     }
 
@@ -190,10 +148,14 @@ class GenerateCampaignPosts implements ShouldQueue
     protected function calculateScheduledDate(array $postData): ?string
     {
         if (!isset($postData['week']) || !isset($postData['day'])) {
-            return null;
+            return $postData['scheduled_date'] ?? null;
         }
 
         $startDate = $this->campaign->start_date;
+        if (!$startDate) {
+            return $postData['scheduled_date'] ?? null;
+        }
+
         $weekNumber = $postData['week'] - 1; // Convert to 0-based
         $dayOfWeek = $postData['day'] - 1; // Convert to 0-based
 
@@ -215,13 +177,13 @@ class GenerateCampaignPosts implements ShouldQueue
         while ($attempt < $maxAttempts) {
             try {
                 $status = $aiService->getTaskStatus($taskId);
-                
+
                 Log::info("Task status check", [
                     'task_id' => $taskId,
                     'attempt' => $attempt,
-                    'status' => $status['status'] ?? 'unknown'
+                    'status' => $status['status'] ?? 'unknown',
                 ]);
-                
+
                 if ($status['status'] === 'completed') {
                     $this->handleTaskCompletion($taskId, $aiService);
                     return;
@@ -235,18 +197,17 @@ class GenerateCampaignPosts implements ShouldQueue
 
                 sleep(5); // Wait 5 seconds before next check
                 $attempt++;
-
             } catch (Exception $e) {
                 Log::warning("Failed to check task status", [
                     'task_id' => $taskId,
                     'attempt' => $attempt,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
-                
+
                 if ($attempt >= $maxAttempts - 1) {
                     throw new Exception("Task polling timeout after {$maxAttempts} attempts");
                 }
-                
+
                 sleep(5);
                 $attempt++;
             }
@@ -262,7 +223,7 @@ class GenerateCampaignPosts implements ShouldQueue
     {
         try {
             $result = $aiService->getTaskResult($taskId);
-            
+
             if (!isset($result['result']['posts']) || empty($result['result']['posts'])) {
                 throw new Exception("No posts in AI service result");
             }
@@ -275,14 +236,13 @@ class GenerateCampaignPosts implements ShouldQueue
                 'generation_status' => 'completed',
                 'generation_progress' => 100,
                 'generation_completed_at' => now(),
-                'ai_generated_plans' => $result['result']
+                'ai_generated_plans' => $result['result'],
             ]);
 
             Log::info("Campaign generation completed successfully", [
                 'campaign_id' => $this->campaign->id,
-                'ai_task_id' => $taskId
+                'ai_task_id' => $taskId,
             ]);
-
         } catch (Exception $e) {
             throw new Exception("Failed to process completed task: " . $e->getMessage());
         }
@@ -296,12 +256,12 @@ class GenerateCampaignPosts implements ShouldQueue
         $this->campaign->update([
             'generation_status' => 'failed',
             'generation_progress' => 0,
-            'generation_completed_at' => now()
+            'generation_completed_at' => now(),
         ]);
 
         Log::error("Campaign generation job failed", [
             'campaign_id' => $this->campaign->id,
-            'error' => $exception->getMessage()
+            'error' => $exception->getMessage(),
         ]);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
+use App\Models\CreativeAsset;
 
 class AiMessage extends Model
 {
@@ -74,7 +75,9 @@ class AiMessage extends Model
             return collect([]);
         }
 
-        return Design::whereIn('uuid', $this->generated_designs)->get();
+        return CreativeAsset::designs()
+            ->whereIn('uuid', $this->generated_designs)
+            ->get();
     }
 
     /**
@@ -88,13 +91,13 @@ class AiMessage extends Model
             'uuid' => $this->uuid,
             'role' => $this->role,
             'content' => $this->content,
-            'generated_designs' => $designs->map(function ($design) {
+            'generated_designs' => $designs->map(function (CreativeAsset $design) {
                 return [
                     'uuid' => $design->uuid,
                     'title' => $design->title,
                     'thumbnail_url' => $design->thumbnail_url,
                     'export_url' => $design->export_url,
-                    'design_type' => $design->design_type,
+                    'design_type' => $design->subtype,
                 ];
             }),
             'suggestions' => $this->suggestions ?? [],

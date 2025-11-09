@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Design;
+use App\Models\CreativeAsset;
 use Illuminate\Console\Command;
 
 class CleanupTrashedDesigns extends Command
@@ -28,7 +28,8 @@ class CleanupTrashedDesigns extends Command
     {
         $thirtyDaysAgo = now()->subDays(30);
         
-        $count = Design::whereNotNull('trashed_at')
+        $count = CreativeAsset::designs()
+            ->whereNotNull('trashed_at')
             ->where('trashed_at', '<', $thirtyDaysAgo)
             ->whereNull('deleted_at')
             ->update(['deleted_at' => now()]);

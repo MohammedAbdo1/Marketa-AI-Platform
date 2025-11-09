@@ -24,6 +24,7 @@ class UserResource extends JsonResource
             'avatar' => $this->avatar,
             'status' => $this->status,
             'last_login_at' => $this->last_login_at?->toISOString(),
+            'has_password' => ! empty($this->password),
             'organization' => new OrganizationResource($this->whenLoaded('organization')),
             'roles' => $this->whenLoaded('roles', function () {
                 return $this->roles->map(function ($role) {

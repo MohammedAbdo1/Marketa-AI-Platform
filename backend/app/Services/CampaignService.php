@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Campaign;
-use App\Models\CampaignPost;
 use Carbon\Carbon;
 
 class CampaignService extends BaseService
@@ -14,7 +13,7 @@ class CampaignService extends BaseService
     public function getCampaignsForOrganization(int $organizationId)
     {
         return Campaign::where('organization_id', $organizationId)
-            ->with('brand', 'posts')
+            ->with(['brand', 'postAssets'])
             ->orderBy('created_at', 'desc')
             ->get();
     }
@@ -69,7 +68,7 @@ class CampaignService extends BaseService
     {
         return Campaign::where('id', $id)
             ->where('organization_id', $organizationId)
-            ->with('brand', 'posts')
+            ->with(['brand', 'postAssets'])
             ->firstOrFail();
     }
 
@@ -118,8 +117,10 @@ class CampaignService extends BaseService
         $campaign = Campaign::where('id', $campaignId)
             ->where('organization_id', $organizationId)
             ->firstOrFail();
-        
-        return $campaign->posts()->orderBy('scheduled_date')->get();
+
+        return $campaign->postAssets()
+            ->orderBy('created_at')
+            ->get();
     }
 
     /**
@@ -131,13 +132,24 @@ class CampaignService extends BaseService
             ->where('organization_id', $organizationId)
             ->firstOrFail();
         
-        $posts = $campaign->posts()
-            ->whereBetween('scheduled_date', [$startDate, $endDate])
-            ->orderBy('scheduled_date')
-            ->orderBy('scheduled_time')
-            ->get();
-        
-        return $posts->groupBy('scheduled_date');
+        $posts = $campaign->postAssets()
+            ->get()
+            ->filter(function ($asset) use ($startDate, $endDate) {
+                $scheduled = data_get($asset->settings, 'scheduled_date');
+                if (!$scheduled) {
+                    return false;
+                }
+
+                return $scheduled >= $startDate && $scheduled <= $endDate;
+            })
+            ->sortBy(function ($asset) {
+                return [
+                    data_get($asset->settings, 'scheduled_date'),
+                    data_get($asset->settings, 'scheduled_time'),
+                ];
+            });
+
+        return $posts->groupBy(fn ($asset) => data_get($asset->settings, 'scheduled_date'));
     }
 }
 

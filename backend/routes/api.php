@@ -17,7 +17,7 @@ use App\Http\Controllers\Api\Auth\RegisterController;
 use App\Http\Controllers\Api\Auth\SocialAuthController;
 use App\Http\Controllers\Api\BrandController;
 use App\Http\Controllers\Api\CampaignController;
-use App\Http\Controllers\Api\CampaignPostController;
+use App\Http\Controllers\Api\CreativeAssetController;
 use App\Http\Controllers\Api\DesignController;
 use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\FavoriteSectionController;
@@ -89,6 +89,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('profile', [ProfileController::class, 'update'])
         ->middleware('rate.limit:write')
         ->name('profile.update');
+    Route::post('profile/email-verification/request', [ProfileController::class, 'requestEmailChangeVerification'])
+        ->middleware('rate.limit:write')
+        ->name('profile.email.request');
+    Route::post('profile/email-verification/verify', [ProfileController::class, 'verifyEmailChangeCode'])
+        ->middleware('rate.limit:write')
+        ->name('profile.email.verify');
     
     // Email Verification (for logged-in users)
     Route::post('email/verification-notification', [EmailVerificationController::class, 'sendVerificationEmail'])
@@ -121,26 +127,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('campaigns/{campaign}/status', [CampaignController::class, 'generationStatus']);
     Route::post('campaigns/suggest-colors', [CampaignController::class, 'suggestColors']);
     Route::post('campaigns/{campaign}/select-plan', [CampaignController::class, 'selectPlan']);
-    Route::get('campaigns/{campaign}/posts', [CampaignController::class, 'posts']);
     Route::get('campaigns/{campaign}/calendar', [CampaignController::class, 'calendar']);
 
-    // Campaign Posts Management
-    Route::get('campaign-posts/{id}', [CampaignPostController::class, 'show']);
-    Route::put('campaign-posts/{id}', [CampaignPostController::class, 'update']);
-    Route::delete('campaign-posts/{id}', [CampaignPostController::class, 'destroy']);
-    Route::post('campaign-posts/{id}/approve', [CampaignPostController::class, 'approve']);
-    Route::post('campaign-posts/{id}/reject', [CampaignPostController::class, 'reject']);
-    Route::post('campaign-posts/{id}/regenerate', [CampaignPostController::class, 'regenerate']);
-    Route::post('campaign-posts/{id}/generate-media', [CampaignPostController::class, 'generateMedia']);
-    Route::put('campaign-posts/{id}/schedule', [CampaignPostController::class, 'schedule']);
-
-    // Layer Management & Composition (for image editing)
-    Route::get('campaign-posts/{id}/layers', [CampaignPostController::class, 'exportLayers']);
-    Route::post('campaign-posts/{id}/layers', [CampaignPostController::class, 'addLayer']);
-    Route::put('campaign-posts/{id}/layers/{layerIndex}', [CampaignPostController::class, 'updateLayer']);
-    Route::delete('campaign-posts/{id}/layers/{layerIndex}', [CampaignPostController::class, 'removeLayer']);
-    Route::post('campaign-posts/{id}/layers/import', [CampaignPostController::class, 'importLayers']);
-    Route::post('campaign-posts/{id}/layers/{layerIndex}/regenerate', [CampaignPostController::class, 'regenerateLayer']);
 
     // Designs Management (New Unified System)
     Route::get('designs/templates', [DesignController::class, 'templates'])->name('designs.templates');
@@ -182,6 +170,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Campaign-Design Linking
     Route::post('campaigns/{campaign}/designs', [CampaignController::class, 'attachDesign'])->name('campaigns.designs.attach');
     Route::delete('campaigns/{campaign}/designs/{design}', [CampaignController::class, 'detachDesign'])->name('campaigns.designs.detach');
+
+    // Creative Assets
+    Route::get('creative-assets/{uuid}', [CreativeAssetController::class, 'show'])->name('creative-assets.show');
+    Route::put('creative-assets/{uuid}', [CreativeAssetController::class, 'update'])->name('creative-assets.update');
 });
 
 // ═══════════════════════════════════════════════════════════════════
@@ -268,4 +260,5 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('ai/test-image', [AdminAIDiagnosticsController::class, 'testImage'])->name('ai.test-image');
     });
 });
+
 

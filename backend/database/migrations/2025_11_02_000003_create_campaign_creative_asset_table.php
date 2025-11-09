@@ -11,10 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('campaign_design', function (Blueprint $table) {
+        Schema::create('campaign_creative_asset', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('campaign_id')->constrained()->onDelete('cascade');
-            $table->foreignId('design_id')->constrained()->onDelete('cascade');
+            $table->foreignId('campaign_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('creative_asset_id')->constrained('creative_assets')->cascadeOnDelete();
             
             // Platform-specific settings
             $table->string('platform'); // facebook, instagram, twitter, linkedin, tiktok
@@ -39,8 +39,7 @@ return new class extends Migration
             
             // Indexes
             $table->index(['campaign_id', 'platform']);
-            $table->index('design_id');
-            $table->unique(['campaign_id', 'design_id', 'platform']);
+            $table->unique(['campaign_id', 'creative_asset_id', 'platform']);
         });
     }
 
@@ -49,7 +48,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('campaign_design');
+        Schema::dropIfExists('campaign_creative_asset');
     }
 };
 

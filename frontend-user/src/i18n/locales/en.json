@@ -276,12 +276,138 @@
       }
     }
   },
+  "profile": {
+    "title": "Account settings",
+    "subtitle": "Manage your personal information, security, and device access.",
+    "common": {
+      "not_set": "Not set",
+      "just_now": "Just now"
+    },
+    "account": {
+      "heading": "Account",
+      "preferred_name": "Preferred name",
+      "preferred_name_placeholder": "Enter your display name",
+      "add_photo": "Add photo",
+      "create_portrait": "Create your portrait",
+      "save": "Save changes",
+      "saving": "Saving...",
+      "organization": "Organization",
+      "email": "Email",
+      "plan_free": "Free plan"
+    },
+    "security": {
+      "heading": "Account security",
+      "status_enabled": "Enabled",
+      "status_disabled": "Not enabled",
+      "email": {
+        "title": "Email",
+        "description": "Set a permanent email to login to your account.",
+        "change": "Change email"
+      },
+      "password": {
+        "title": "Password",
+        "description": "Set a permanent password to login to your account.",
+        "description_set": "Update your password regularly to keep your account secure.",
+        "add": "Add password",
+        "change": "Change password"
+      },
+      "twofactor": {
+        "title": "2-step verification",
+        "description": "Add an additional layer of security to your account during login.",
+        "add": "Add verification method",
+        "password_required": "A password is required to enable 2-step verification."
+      },
+      "passkeys": {
+        "title": "Passkeys",
+        "description": "Securely sign-in with on-device biometric authentication.",
+        "add": "Add passkey"
+      }
+    },
+    "devices": {
+      "title": "Devices",
+      "logout_all": "Log out of all devices",
+      "device": "Device",
+      "last_active": "Last active",
+      "location": "Location",
+      "this_device": "This device",
+      "default_name": "Current device",
+      "unknown_device": "Unknown device",
+      "unknown_location": "Unknown location",
+      "unknown_platform": "Unknown platform"
+    },
+    "user_id": {
+      "title": "User ID",
+      "copy": "Copy ID"
+    },
+    "notifications": {
+      "load_failed": "Failed to load your profile information.",
+      "profile_updated": "Profile updated successfully.",
+      "update_failed": "Could not update profile. Please try again.",
+      "name_required": "Please enter a name before saving.",
+      "no_changes": "No changes to save.",
+      "avatar_coming_soon": "Profile photo uploads will be available soon.",
+      "portrait_coming_soon": "AI portrait generation will be available soon.",
+      "set_password_coming_soon": "Password setup will be available soon.",
+      "change_password_coming_soon": "Password updates will be available soon.",
+      "password_required": "Please set a password before enabling 2-step verification.",
+      "twofactor_coming_soon": "Two-factor authentication will be available soon.",
+      "passkey_coming_soon": "Passkeys will be available soon.",
+      "logout_all_coming_soon": "Device management will be available soon.",
+      "user_id_copied": "User ID copied to clipboard.",
+      "copy_failed": "Could not copy the user ID.",
+      "no_user_id": "No user ID available to copy."
+    },
+    "email_modal": {
+      "verify_title": "Verify your email",
+      "update_title": "Update email address",
+      "verify_description": "Your current email is {email}. We’ll send a temporary verification code to this email.",
+      "verify_sent_description": "Your current email is {email}. We’ve sent a temporary verification code to this email.",
+      "send_code": "Send verification code",
+      "sending_code": "Sending...",
+      "security_note": "For security reasons we need to confirm it’s really you.",
+      "code_label": "Verification code",
+      "code_placeholder": "Enter the 6-digit code",
+      "new_email_label": "New email",
+      "new_email_placeholder": "name@example.com",
+      "confirm_email_label": "Confirm new email",
+      "confirm_email_placeholder": "Re-enter email",
+      "code_sent": "Verification code sent to {email}.",
+      "code_verified": "Verification code confirmed.",
+      "code_failed": "Unable to send verification code.",
+      "code_required": "Please enter the verification code.",
+      "new_email_required": "Please enter a new email address.",
+      "email_mismatch": "Email confirmation does not match.",
+      "continue_button": "Continue",
+      "verifying": "Verifying...",
+      "update_button": "Update email",
+      "updating": "Updating...",
+      "didnt_receive": "Didn’t receive the code?",
+      "resend_code": "Resend code"
+    },
+    "password_modal": {
+      "set_title": "Set a password",
+      "change_title": "Change password",
+      "instructions": "Use a password at least 15 letters long, or at least 8 characters long with both letters and numbers.",
+      "current_label": "Current password",
+      "new_label": "New password",
+      "confirm_label": "Confirm new password",
+      "set_button": "Set a password",
+      "save_button": "Save password",
+      "success_set": "Password created successfully.",
+      "success_change": "Password updated successfully.",
+      "error_policy": "Password must be at least 8 characters and include both letters and numbers, or be 15 characters long.",
+      "error_mismatch": "Passwords do not match.",
+      "error_current_required": "Please enter your current password.",
+      "error_current_invalid": "The current password is incorrect."
+    }
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
     "confirm": "Confirm",
     "edit": "Edit",
+
     "loading": "Loading...",
     "no_data": "No data available",
     "search": "Search",
@@ -404,4 +530,3 @@
     "all_rights_reserved": "All rights reserved"
   }
 }
-

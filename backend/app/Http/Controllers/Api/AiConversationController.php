@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AiConversation;
-use App\Models\Design;
+use App\Services\CreativeAssetService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -13,6 +13,9 @@ use Illuminate\Support\Str;
 
 class AiConversationController extends Controller
 {
+    public function __construct(protected CreativeAssetService $creativeAssetService)
+    {
+    }
     /**
      * Display a listing of the user's conversations.
      */
@@ -230,10 +233,12 @@ class AiConversationController extends Controller
                 // Create Design objects for each generated image
                 $createdDesigns = [];
                 if (!empty($data['images'])) {
+                    $conversation->loadMissing('user');
+                    $organizationId = $conversation->user?->organization_id;
+
                     foreach ($data['images'] as $index => $imageData) {
-                        $design = Design::create([
-                            'user_id' => $conversation->user_id,
-                            'title' => $imageData['title'] ?? "Design " . ($index + 1),
+                        $design = $this->creativeAssetService->createDesignAsset([
+                            'title' => $imageData['title'] ?? 'Design ' . ($index + 1),
                             'description' => $userMessage,
                             'design_type' => $conversation->design_type,
                             'source_type' => 'ai',
@@ -246,13 +251,18 @@ class AiConversationController extends Controller
                                         'url' => $imageData['url'],
                                         'x' => 0,
                                         'y' => 0,
+                                        'left' => 0,
+                                        'top' => 0,
                                         'width' => 1080,
                                         'height' => 1080,
-                                    ]
+                                        'scaleX' => 1,
+                                        'scaleY' => 1,
+                                    ],
                                 ],
-                                'dimensions' => ['width' => 1080, 'height' => 1080]
+                                'dimensions' => ['width' => 1080, 'height' => 1080],
                             ],
                             'thumbnail_url' => $imageData['url'],
+                            'preview_url' => $imageData['url'],
                             'export_url' => $imageData['url'],
                             'width' => 1080,
                             'height' => 1080,
@@ -260,8 +270,9 @@ class AiConversationController extends Controller
                                 'prompt' => $userMessage,
                                 'provider' => $imageData['provider'] ?? 'unknown',
                             ],
-                        ]);
-                        
+                            'tags' => $imageData['tags'] ?? [],
+                        ], $conversation->user_id, $organizationId);
+
                         $createdDesigns[] = $design->uuid;
                     }
                 }

@@ -1,45 +1,37 @@
 <template>
   <div class="sample-post-card">
-    <!-- Post Image with Text Overlays -->
     <div class="post-image-container">
-      <img 
-        :src="post.base_image_url || post.image_url || '/placeholder-image.png'" 
+      <CanvasPreview
+        v-if="hasComposition"
+        :composition-data="compositionData"
+        :width="compositionWidth"
+        :height="compositionHeight"
+        fit-parent
+      />
+      <img
+        v-else
+        :src="post.base_image_url || post.image_url || post.media_urls?.[0] || '/placeholder-image.png'"
         :alt="getPostContent()"
         class="post-image"
       />
-      
-      <!-- Text Overlays Preview -->
-      <div 
-        v-for="(layer, idx) in getTextLayers()" 
-        :key="idx"
-        class="text-overlay"
-        :style="getLayerStyle(layer)"
-      >
-        {{ layer.content }}
-      </div>
 
-      <!-- Platform Badge -->
       <div class="platform-badge">
         <i :class="getPlatformIcon(post.platform)"></i>
         {{ post.platform }}
       </div>
     </div>
 
-    <!-- Post Info -->
     <div class="post-info">
-      <!-- Content -->
       <div class="post-content">
         <p>{{ getPostContent() }}</p>
       </div>
 
-      <!-- Hashtags -->
       <div v-if="getHashtags().length > 0" class="post-hashtags">
         <span v-for="tag in getHashtags()" :key="tag" class="hashtag">
           {{ tag }}
         </span>
       </div>
 
-      <!-- Post Meta -->
       <div class="post-meta">
         <span class="meta-item">
           <i class="bx bx-calendar"></i>
@@ -52,15 +44,13 @@
       </div>
     </div>
 
-    <!-- Content Brief (Expandable) -->
     <details v-if="post.content_brief" class="content-brief">
       <summary class="brief-summary">
         <i class="bx bx-info-circle"></i>
         {{ $t('campaigns.content_brief') }}
       </summary>
-      
+
       <div class="brief-content">
-        <!-- Instructions -->
         <div v-if="post.content_brief.instructions" class="brief-section">
           <h6 class="brief-title">
             <i class="bx bx-list-ul"></i>
@@ -69,7 +59,6 @@
           <p class="brief-text">{{ post.content_brief.instructions.overview }}</p>
         </div>
 
-        <!-- Filming Guide -->
         <div v-if="post.content_brief.filming" class="brief-section">
           <h6 class="brief-title">
             <i class="bx bx-camera"></i>
@@ -77,13 +66,12 @@
           </h6>
           <ul class="brief-list">
             <li v-for="(item, key) in post.content_brief.filming" :key="key">
-              <strong>{{ key }}:</strong> 
+              <strong>{{ key }}:</strong>
               {{ Array.isArray(item) ? item.join(', ') : item }}
             </li>
           </ul>
         </div>
 
-        <!-- Editing Tips -->
         <div v-if="post.content_brief.editing" class="brief-section">
           <h6 class="brief-title">
             <i class="bx bx-movie"></i>
@@ -97,7 +85,6 @@
           </ul>
         </div>
 
-        <!-- Engagement Tips -->
         <div v-if="post.content_brief.engagement_tips" class="brief-section">
           <h6 class="brief-title">
             <i class="bx bx-trending-up"></i>
@@ -112,12 +99,11 @@
       </div>
     </details>
 
-    <!-- Expected Results -->
     <div v-if="post.expected_results" class="expected-results">
       <h6 class="results-title">{{ $t('campaigns.expected_results') }}</h6>
       <div class="results-grid">
-        <div 
-          v-for="(value, key) in post.expected_results" 
+        <div
+          v-for="(value, key) in post.expected_results"
           :key="key"
           class="result-item"
         >
@@ -132,6 +118,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import CanvasPreview from '@/components/designs/CanvasPreview.vue'
 
 const props = defineProps({
   post: { type: Object, required: true }
@@ -141,68 +128,104 @@ const { t } = useI18n()
 
 const getPostContent = () => {
   if (!props.post.content) return ''
-  
-  // If content is object with multiple languages
+
   if (typeof props.post.content === 'object') {
     const primary = props.post.primary_language || 'ar'
     return props.post.content[primary] || Object.values(props.post.content)[0] || ''
   }
-  
+
   return props.post.content
 }
 
 const getHashtags = () => {
   if (!props.post.hashtags) return []
-  
-  // If hashtags is object with multiple languages
+
   if (typeof props.post.hashtags === 'object' && !Array.isArray(props.post.hashtags)) {
     const primary = props.post.primary_language || 'ar'
     return props.post.hashtags[primary] || Object.values(props.post.hashtags)[0] || []
   }
-  
+
   if (Array.isArray(props.post.hashtags)) {
     return props.post.hashtags
   }
-  
+
   return []
 }
 
-const getTextLayers = () => {
-  if (!props.post.composition_layers?.layers) return []
-  return props.post.composition_layers.layers.filter(layer => layer.type === 'text')
+const resolveCompositionSource = () => {
+  if (props.post.composition_layers) {
+    const raw = props.post.composition_layers
+    if (Array.isArray(raw)) return raw
+
+    const keys = Object.keys(raw)
+    const isNumericCollection = keys.every((key) => !Number.isNaN(Number(key)))
+    if (isNumericCollection) {
+      return Object.values(raw)
+    }
+
+    return raw
+  }
+  if (props.post.content?.composition_layers) {
+    return {
+      layers: props.post.content.composition_layers,
+      dimensions: props.post.content.dimensions
+    }
+  }
+  return null
 }
 
-const getLayerStyle = (layer) => {
-  if (!layer.position || !layer.style) return {}
-  
-  return {
-    position: 'absolute',
-    left: `${layer.position.x}px`,
-    top: `${layer.position.y}px`,
-    fontSize: `${layer.style.size}px`,
-    color: layer.style.color || '#FFFFFF',
-    fontWeight: layer.style.weight || 'bold',
-    textAlign: layer.style.align || 'center',
-    textShadow: layer.style.shadow ? '2px 2px 4px rgba(0,0,0,0.5)' : 'none',
-    fontFamily: layer.style.font || 'inherit',
-    transform: 'translate(-50%, -50%)'
+const hasComposition = computed(() => {
+  const raw = resolveCompositionSource()
+  if (!raw) return false
+  if (Array.isArray(raw)) return raw.length > 0
+  if (typeof raw === 'object') {
+    if (Array.isArray(raw.layers)) return raw.layers.length > 0
+    if (Array.isArray(raw.objects)) return raw.objects.length > 0
+    if (raw.version) return true
   }
-}
+  return false
+})
+
+const compositionData = computed(() => {
+  if (!hasComposition.value) return null
+  const raw = resolveCompositionSource()
+  if (Array.isArray(raw)) {
+    return { layers: raw }
+  }
+  if (raw && typeof raw === 'object' && Array.isArray(raw.layers)) {
+    return raw
+  }
+  return raw
+})
+
+const compositionWidth = computed(() => {
+  const source = resolveCompositionSource()
+  const dimensions = (source && !Array.isArray(source) && source.dimensions) || props.post.content?.dimensions
+  if (dimensions?.width) return dimensions.width
+  return props.post.width || 1080
+})
+
+const compositionHeight = computed(() => {
+  const source = resolveCompositionSource()
+  const dimensions = (source && !Array.isArray(source) && source.dimensions) || props.post.content?.dimensions
+  if (dimensions?.height) return dimensions.height
+  return props.post.height || 1080
+})
 
 const getPlatformIcon = (platform) => {
   const iconMap = {
-    'instagram': 'bx bxl-instagram',
-    'facebook': 'bx bxl-facebook',
-    'twitter': 'bx bxl-twitter',
-    'x': 'bx bxl-twitter',
-    'tiktok': 'bx bxl-tiktok',
-    'linkedin': 'bx bxl-linkedin'
+    instagram: 'bx bxl-instagram',
+    facebook: 'bx bxl-facebook',
+    twitter: 'bx bxl-twitter',
+    x: 'bx bxl-twitter',
+    tiktok: 'bx bxl-tiktok',
+    linkedin: 'bx bxl-linkedin'
   }
-  return iconMap[platform?.toLowerCase()] || 'bx bx-share-alt'
+  return iconMap[platform?.toLowerCase?.()] || 'bx bx-share-alt'
 }
 
 const formatKey = (key) => {
-  return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+  return key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
 }
 </script>
 
@@ -220,26 +243,26 @@ const formatKey = (key) => {
   box-shadow: var(--shadow-md);
 }
 
-/* Post Image */
 .post-image-container {
   position: relative;
   width: 100%;
   aspect-ratio: 1;
   overflow: hidden;
   background: var(--color-bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.post-image-container .canvas-preview {
+  position: absolute;
+  inset: 0;
 }
 
 .post-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.text-overlay {
-  position: absolute;
-  pointer-events: none;
-  white-space: nowrap;
-  max-width: 90%;
 }
 
 .platform-badge {
@@ -262,7 +285,6 @@ const formatKey = (key) => {
   left: var(--space-3);
 }
 
-/* Post Info */
 .post-info {
   padding: var(--space-4);
   display: flex;
@@ -309,7 +331,6 @@ const formatKey = (key) => {
   gap: var(--space-1);
 }
 
-/* Content Brief */
 .content-brief {
   border-top: 1px solid var(--color-border-light);
 }
@@ -379,7 +400,6 @@ const formatKey = (key) => {
   margin-bottom: var(--space-1);
 }
 
-/* Expected Results */
 .expected-results {
   padding: var(--space-4);
   background: var(--color-green-bg);
@@ -417,7 +437,6 @@ const formatKey = (key) => {
   color: var(--color-green-text);
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .results-grid {
     grid-template-columns: 1fr;

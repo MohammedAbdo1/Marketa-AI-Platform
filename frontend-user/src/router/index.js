@@ -131,9 +131,18 @@ const router = createRouter({
           component: () => import('../views/dashboard/campaigns/CampaignDetails.vue'),
         },
         {
-          path: 'posts/:id/edit',
+          path: 'posts/:uuid/edit',
           name: 'posts.edit',
-          component: () => import('../views/EditorView.vue'),
+          beforeEnter: (to) => {
+            if (typeof window !== 'undefined') {
+              const target = to.params.uuid
+              if (target) {
+                window.open(`/editor/${target}`, '_blank', 'noopener')
+              }
+              return false
+            }
+            return true
+          },
         },
         // Designs Routes (New)
         {

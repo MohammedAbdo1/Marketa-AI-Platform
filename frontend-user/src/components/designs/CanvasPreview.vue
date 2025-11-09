@@ -1,5 +1,5 @@
 <template>
-  <div class="canvas-preview">
+  <div :class="['canvas-preview', { 'fit-parent': fitParent }]">
     <canvas ref="canvasRef" :id="canvasId"></canvas>
   </div>
 </template>
@@ -24,6 +24,10 @@ const props = defineProps({
   scale: {
     type: Number,
     default: 0.3 // للعرض في الكارد
+  },
+  fitParent: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -40,10 +44,14 @@ const renderCanvas = async () => {
       fabricCanvas.value.dispose()
     }
 
+    const baseScale = props.fitParent ? 1 : props.scale
+    const canvasWidth = props.fitParent ? props.width : props.width * baseScale
+    const canvasHeight = props.fitParent ? props.height : props.height * baseScale
+
     // Create new Fabric canvas
     fabricCanvas.value = new fabric.Canvas(canvasId.value, {
-      width: props.width * props.scale,
-      height: props.height * props.scale,
+      width: canvasWidth,
+      height: canvasHeight,
       backgroundColor: props.compositionData.backgroundColor || '#FFFFFF',
       selection: false, // Disable selection in preview
       renderOnAddRemove: true,
@@ -71,8 +79,18 @@ const renderCanvas = async () => {
     }
 
     // Scale down for preview
-    fabricCanvas.value.setZoom(props.scale)
+    fabricCanvas.value.setZoom(baseScale)
     fabricCanvas.value.renderAll()
+
+    if (props.fitParent && canvasRef.value) {
+      fabricCanvas.value.setDimensions({
+        width: props.width,
+        height: props.height
+      })
+      fabricCanvas.value.setZoom(1)
+      canvasRef.value.style.width = '100%'
+      canvasRef.value.style.height = '100%'
+    }
   } catch (error) {
     console.error('Canvas rendering error:', error)
   }
@@ -184,10 +202,20 @@ const loadObject = async (objData) => {
   })
 }
 
-// Watch for composition changes
-watch(() => props.compositionData, () => {
-  renderCanvas()
-}, { deep: true })
+// Watch for composition/scale/dimension changes
+watch(
+  () => [
+    props.compositionData,
+    props.scale,
+    props.width,
+    props.height,
+    props.fitParent
+  ],
+  () => {
+    renderCanvas()
+  },
+  { deep: true }
+)
 
 onMounted(async () => {
   await nextTick()
@@ -210,6 +238,17 @@ canvas {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
+}
+
+.canvas-preview.fit-parent {
+  width: 100%;
+  height: 100%;
+}
+
+.canvas-preview.fit-parent canvas {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
 }
 </style>
 

@@ -11,7 +11,7 @@ class UserFavorite extends Model
 
     protected $fillable = [
         'user_id',
-        'design_id',
+        'creative_asset_id',
         'section_id',
         'order',
     ];
@@ -34,7 +34,8 @@ class UserFavorite extends Model
      */
     public function design(): BelongsTo
     {
-        return $this->belongsTo(Design::class);
+        return $this->belongsTo(CreativeAsset::class, 'creative_asset_id')
+            ->where('asset_type', 'design');
     }
 
     /**

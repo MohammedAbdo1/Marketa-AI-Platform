@@ -14,11 +14,11 @@ return new class extends Migration
         Schema::create('user_favorites', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('design_id')->constrained()->onDelete('cascade');
+            $table->unsignedBigInteger('creative_asset_id');
             $table->foreignId('section_id')->nullable()->constrained('favorite_sections')->onDelete('set null');
             $table->integer('order')->default(0);
             $table->timestamp('created_at')->useCurrent();
-            $table->unique(['user_id', 'design_id']);
+            $table->unique(['user_id', 'creative_asset_id']);
             $table->index(['user_id', 'section_id', 'order']);
         });
     }

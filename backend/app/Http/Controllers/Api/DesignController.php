@@ -3,37 +3,37 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Design;
+use App\Models\Campaign;
+use App\Models\CreativeAsset;
+use App\Models\UserFavorite;
+use App\Services\CreativeAssetService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
 class DesignController extends Controller
 {
+    public function __construct(protected CreativeAssetService $creativeAssetService)
+    {
+    }
     /**
      * Display a listing of the user's designs.
      */
     public function index(Request $request)
     {
-        $query = Design::ownedBy(Auth::id())
+        $query = $this->creativeAssetService
+            ->designQuery()
+            ->ownedBy(Auth::id())
                       ->notTrashed()
-                      ->with('user:id,name,email')
-                      ->select([
-                          'id', 'uuid', 'user_id', 'title', 'description',
-                          'design_type', 'source_type', 'composition_data',
-                          'thumbnail_url', 'export_url', 'width', 'height',
-                          'canvas_settings', 'metadata', 'is_template',
-                          'is_public', 'views_count', 'used_count',
-                          'created_at', 'updated_at'
-                      ]);
+            ->with('user:id,name,email');
 
         // Filters
         if ($request->has('type')) {
-            $query->ofType($request->type);
+            $query->where('subtype', $request->type);
         }
 
         if ($request->has('source_type')) {
-            $query->fromSource($request->source_type);
+            $query->where('source_type', $request->source_type);
         }
 
         if ($request->has('is_template')) {
@@ -60,9 +60,13 @@ class DesignController extends Controller
         $designs = $query->paginate($perPage, ['*'], 'page', $page);
 
         // Add is_favorited flag and ensure composition_data is included
-        $designs->getCollection()->transform(function ($design) {
-            $design->is_favorited = $design->isFavoritedBy(Auth::id());
-            return $design;
+        $userId = Auth::id();
+        $designs->getCollection()->transform(function (CreativeAsset $asset) use ($userId) {
+            $formatted = $this->creativeAssetService->formatDesignAsset($asset, $userId);
+            $formatted['is_favorited'] = $asset->favorites()
+                ->where('user_id', $userId)
+                ->exists();
+            return $formatted;
         });
 
         return response()->json($designs);
@@ -78,11 +82,20 @@ class DesignController extends Controller
             'description' => 'nullable|string',
             'design_type' => 'required|in:social_post,story,presentation,banner,custom',
             'source_type' => 'required|in:ai,manual,template,imported',
+            'source_id' => 'nullable|string',
+            'source_type_model' => 'nullable|string',
             'composition_data' => 'required|array',
             'width' => 'nullable|integer|min:1',
             'height' => 'nullable|integer|min:1',
             'canvas_settings' => 'nullable|array',
             'metadata' => 'nullable|array',
+            'tags' => 'nullable|array',
+            'thumbnail_url' => 'nullable|string',
+            'export_url' => 'nullable|string',
+            'context_type' => 'nullable|string',
+            'context_id' => 'nullable|integer',
+            'is_template' => 'nullable|boolean',
+            'is_public' => 'nullable|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -92,26 +105,17 @@ class DesignController extends Controller
             ], 422);
         }
 
-        $design = Design::create([
-            'user_id' => Auth::id(),
-            'title' => $request->title ?? 'Untitled Design',
-            'description' => $request->description,
-            'design_type' => $request->design_type,
-            'source_type' => $request->source_type,
-            'source_id' => $request->source_id,
-            'source_type_model' => $request->source_type_model,
-            'composition_data' => $request->composition_data,
-            'width' => $request->width ?? 1080,
-            'height' => $request->height ?? 1080,
-            'canvas_settings' => $request->canvas_settings,
-            'metadata' => $request->metadata,
-            'context_type' => $request->context_type,
-            'context_id' => $request->context_id,
-        ]);
+        $user = Auth::user();
+        $data = $validator->validated();
+        $asset = $this->creativeAssetService->createDesignAsset(
+            $data,
+            $user->id,
+            $user->organization_id
+        );
 
         return response()->json([
             'message' => 'Design created successfully',
-            'design' => $design
+            'design' => $this->creativeAssetService->formatDesignAsset($asset, $user->id)
         ], 201);
     }
 
@@ -120,21 +124,28 @@ class DesignController extends Controller
      */
     public function show($uuid)
     {
-        $design = Design::where('uuid', $uuid)
-                       ->with(['user:id,name,email', 'campaigns'])
+        $asset = $this->creativeAssetService
+            ->designQuery()
+            ->where('uuid', $uuid)
+            ->with(['user:id,name,email', 'campaigns:id,uuid,name'])
                        ->firstOrFail();
 
-        // Check ownership or public
-        if ($design->user_id !== Auth::id() && !$design->is_public) {
+        if ($asset->user_id !== Auth::id() && !$asset->is_public) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        // Increment views
-        if ($design->user_id !== Auth::id()) {
-            $design->incrementViews();
-        }
+        $this->creativeAssetService->incrementDesignViews($asset, Auth::id());
 
-        return response()->json($design);
+        $payload = $this->creativeAssetService->formatDesignAsset($asset, Auth::id());
+        $payload['campaigns'] = $asset->campaigns->map(function (Campaign $campaign) {
+            return [
+                'id' => $campaign->id,
+                'uuid' => $campaign->uuid,
+                'name' => $campaign->name,
+            ];
+        })->values();
+
+        return response()->json($payload);
     }
 
     /**
@@ -142,10 +153,12 @@ class DesignController extends Controller
      */
     public function update(Request $request, $uuid)
     {
-        $design = Design::where('uuid', $uuid)->firstOrFail();
+        $asset = $this->creativeAssetService
+            ->designQuery()
+            ->where('uuid', $uuid)
+            ->firstOrFail();
 
-        // Check ownership
-        if ($design->user_id !== Auth::id()) {
+        if ($asset->user_id !== Auth::id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -157,8 +170,14 @@ class DesignController extends Controller
             'height' => 'nullable|integer|min:1',
             'canvas_settings' => 'nullable|array',
             'metadata' => 'nullable|array',
+            'tags' => 'nullable|array',
             'thumbnail_url' => 'nullable|string',
+            'preview_url' => 'nullable|string',
             'export_url' => 'nullable|string',
+            'design_type' => 'nullable|in:social_post,story,presentation,banner,custom',
+            'is_template' => 'nullable|boolean',
+            'is_public' => 'nullable|boolean',
+            'status' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -168,21 +187,11 @@ class DesignController extends Controller
             ], 422);
         }
 
-        $design->update($request->only([
-            'title',
-            'description',
-            'composition_data',
-            'width',
-            'height',
-            'canvas_settings',
-            'metadata',
-            'thumbnail_url',
-            'export_url',
-        ]));
+        $this->creativeAssetService->updateDesignAsset($asset, $validator->validated());
 
         return response()->json([
             'message' => 'Design updated successfully',
-            'design' => $design
+            'design' => $this->creativeAssetService->formatDesignAsset($asset, Auth::id())
         ]);
     }
 
@@ -191,15 +200,16 @@ class DesignController extends Controller
      */
     public function destroy($uuid)
     {
-        $design = Design::where('uuid', $uuid)->firstOrFail();
+        $asset = $this->creativeAssetService
+            ->designQuery()
+            ->where('uuid', $uuid)
+            ->firstOrFail();
 
-        // Check ownership
-        if ($design->user_id !== Auth::id()) {
+        if ($asset->user_id !== Auth::id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        // Check if used in active campaigns
-        $campaignCount = $design->campaigns()->count();
+        $campaignCount = $asset->campaigns()->count();
         if ($campaignCount > 0) {
             return response()->json([
                 'message' => 'Cannot delete design used in campaigns',
@@ -207,7 +217,7 @@ class DesignController extends Controller
             ], 409);
         }
 
-        $design->delete();
+        $this->creativeAssetService->delete($asset);
 
         return response()->json([
             'message' => 'Design deleted successfully'
@@ -219,18 +229,25 @@ class DesignController extends Controller
      */
     public function duplicate($uuid)
     {
-        $design = Design::where('uuid', $uuid)->firstOrFail();
+        $asset = $this->creativeAssetService
+            ->designQuery()
+            ->where('uuid', $uuid)
+            ->firstOrFail();
 
-        // Check ownership or public
-        if ($design->user_id !== Auth::id() && !$design->is_public) {
+        if ($asset->user_id !== Auth::id() && !$asset->is_public) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $newDesign = $design->duplicate(Auth::user());
+        $user = Auth::user();
+        $duplicate = $this->creativeAssetService->duplicateDesignAsset(
+            $asset,
+            $user->id,
+            $user->organization_id
+        );
 
         return response()->json([
             'message' => 'Design duplicated successfully',
-            'design' => $newDesign
+            'design' => $this->creativeAssetService->formatDesignAsset($duplicate, $user->id)
         ], 201);
     }
 
@@ -239,19 +256,20 @@ class DesignController extends Controller
      */
     public function export($uuid)
     {
-        $design = Design::where('uuid', $uuid)->firstOrFail();
+        $asset = $this->creativeAssetService
+            ->designQuery()
+            ->where('uuid', $uuid)
+            ->firstOrFail();
 
-        // Check ownership or public
-        if ($design->user_id !== Auth::id() && !$design->is_public) {
+        if ($asset->user_id !== Auth::id() && !$asset->is_public) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        // TODO: Implement image export logic
-        // This would call the AI service to render the composition_data to an image
+        // TODO: Implement image export logic via AI service
 
         return response()->json([
             'message' => 'Export initiated',
-            'export_url' => $design->export_url
+            'export_url' => $asset->export_url
         ]);
     }
 
@@ -260,18 +278,23 @@ class DesignController extends Controller
      */
     public function toTemplate($uuid)
     {
-        $design = Design::where('uuid', $uuid)->firstOrFail();
+        $asset = $this->creativeAssetService
+            ->designQuery()
+            ->where('uuid', $uuid)
+            ->firstOrFail();
 
-        // Check ownership
-        if ($design->user_id !== Auth::id()) {
+        if ($asset->user_id !== Auth::id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $design->toTemplate();
+        $this->creativeAssetService->updateDesignAsset($asset, [
+            'is_template' => true,
+            'is_public' => true,
+        ]);
 
         return response()->json([
             'message' => 'Design converted to template successfully',
-            'design' => $design
+            'design' => $this->creativeAssetService->formatDesignAsset($asset, Auth::id())
         ]);
     }
 
@@ -280,10 +303,12 @@ class DesignController extends Controller
      */
     public function updateTitle(Request $request, $uuid)
     {
-        $design = Design::where('uuid', $uuid)->firstOrFail();
+        $asset = $this->creativeAssetService
+            ->designQuery()
+            ->where('uuid', $uuid)
+            ->firstOrFail();
 
-        // Check ownership
-        if ($design->user_id !== Auth::id()) {
+        if ($asset->user_id !== Auth::id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -298,12 +323,13 @@ class DesignController extends Controller
             ], 422);
         }
 
-        $design->title = $request->title;
-        $design->save();
+        $this->creativeAssetService->updateDesignAsset($asset, [
+            'title' => $request->title,
+        ]);
 
         return response()->json([
             'message' => 'Title updated successfully',
-            'design' => $design
+            'design' => $this->creativeAssetService->formatDesignAsset($asset, Auth::id())
         ]);
     }
 
@@ -312,16 +338,20 @@ class DesignController extends Controller
      */
     public function trashed(Request $request)
     {
-        $query = Design::ownedBy(Auth::id())
+        $query = $this->creativeAssetService
+            ->designQuery()
+            ->ownedBy(Auth::id())
                       ->trashed()
-                      ->with('user:id,name,email');
+            ->with('user:id,name,email')
+            ->orderBy('trashed_at', 'desc');
 
-        // Sort by trashed_at desc
-        $query->orderBy('trashed_at', 'desc');
-
-        // Paginate
         $perPage = $request->get('per_page', 20);
         $designs = $query->paginate($perPage);
+
+        $userId = Auth::id();
+        $designs->getCollection()->transform(function (CreativeAsset $asset) use ($userId) {
+            return $this->creativeAssetService->formatDesignAsset($asset, $userId);
+        });
 
         return response()->json($designs);
     }
@@ -331,18 +361,20 @@ class DesignController extends Controller
      */
     public function moveToTrash($uuid)
     {
-        $design = Design::where('uuid', $uuid)->firstOrFail();
+        $asset = $this->creativeAssetService
+            ->designQuery()
+            ->where('uuid', $uuid)
+            ->firstOrFail();
 
-        // Check ownership
-        if ($design->user_id !== Auth::id()) {
+        if ($asset->user_id !== Auth::id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $design->moveToTrash();
+        $this->creativeAssetService->trashDesignAsset($asset);
 
         return response()->json([
             'message' => 'Design moved to trash successfully',
-            'design' => $design
+            'design' => $this->creativeAssetService->formatDesignAsset($asset, Auth::id())
         ]);
     }
 
@@ -351,18 +383,20 @@ class DesignController extends Controller
      */
     public function restore($uuid)
     {
-        $design = Design::where('uuid', $uuid)->firstOrFail();
+        $asset = $this->creativeAssetService
+            ->designQuery()
+            ->where('uuid', $uuid)
+            ->firstOrFail();
 
-        // Check ownership
-        if ($design->user_id !== Auth::id()) {
+        if ($asset->user_id !== Auth::id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $design->restoreFromTrash();
+        $this->creativeAssetService->restoreDesignAsset($asset);
 
         return response()->json([
             'message' => 'Design restored successfully',
-            'design' => $design
+            'design' => $this->creativeAssetService->formatDesignAsset($asset, Auth::id())
         ]);
     }
 
@@ -371,14 +405,17 @@ class DesignController extends Controller
      */
     public function forceDelete($uuid)
     {
-        $design = Design::where('uuid', $uuid)->firstOrFail();
+        $asset = $this->creativeAssetService
+            ->designQuery()
+            ->where('uuid', $uuid)
+            ->withTrashed()
+            ->firstOrFail();
 
-        // Check ownership
-        if ($design->user_id !== Auth::id()) {
+        if ($asset->user_id !== Auth::id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $design->forceDelete();
+        $asset->forceDelete();
 
         return response()->json([
             'message' => 'Design permanently deleted'
@@ -390,12 +427,15 @@ class DesignController extends Controller
      */
     public function templates(Request $request)
     {
-        $query = Design::templates()
+        $query = $this->creativeAssetService
+            ->designQuery()
+            ->where('is_template', true)
+            ->where('is_public', true)
                       ->with('user:id,name');
 
         // Filter by type
         if ($request->has('type')) {
-            $query->ofType($request->type);
+            $query->where('subtype', $request->type);
         }
 
         // Search
@@ -412,6 +452,10 @@ class DesignController extends Controller
               ->orderBy('created_at', 'desc');
 
         $templates = $query->paginate(20);
+        $userId = Auth::id();
+        $templates->getCollection()->transform(function (CreativeAsset $asset) use ($userId) {
+            return $this->creativeAssetService->formatDesignAsset($asset, $userId);
+        });
 
         return response()->json($templates);
     }

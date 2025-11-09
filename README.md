@@ -138,17 +138,16 @@ frontend-user/
 backend/
 ├── app/
 │   ├── Models/
-│   │   ├── Design.php (NEW)
-│   │   ├── AiConversation.php (NEW)
-│   │   └── AiMessage.php (NEW)
+│   │   ├── CreativeAsset.php
+│   │   ├── AiConversation.php
+│   │   └── AiMessage.php
 │   └── Http/Controllers/Api/
-│       ├── DesignController.php (NEW)
-│       └── AiConversationController.php (NEW)
+│       ├── CreativeAssetController.php
+│       ├── DesignController.php
+│       └── AiConversationController.php
 └── database/migrations/
-    ├── 2025_11_02_000001_create_designs_table.php
-    ├── 2025_11_02_000002_add_uuid_to_campaign_posts.php
-    ├── 2025_11_02_000003_create_campaign_design_table.php
-    ├── 2025_11_02_000004_update_campaign_posts_design_link.php
+    ├── 2025_10_25_000000_create_creative_assets_table.php
+    ├── 2025_11_02_000003_create_campaign_creative_asset_table.php
     └── 2025_11_02_000005_create_ai_conversations_tables.php
 ```
 

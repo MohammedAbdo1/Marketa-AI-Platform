@@ -128,7 +128,7 @@ export const useFavoritesStore = defineStore('favorites', {
     async addToFavorites(designId, sectionId = null) {
       try {
         const response = await axios.post('/favorites', {
-          design_id: designId,
+          creative_asset_id: designId,
           section_id: sectionId
         })
 

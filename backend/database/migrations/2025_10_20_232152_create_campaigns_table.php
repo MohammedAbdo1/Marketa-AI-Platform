@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('campaigns', function (Blueprint $table) {
             $table->id();
+            $table->uuid('uuid')->unique();
             $table->foreignId('user_id')->constrained()->onDelete('cascade'); // المستخدم الذي أنشأ الحملة
             $table->foreignId('organization_id')->nullable()->constrained()->onDelete('cascade'); // اختياري للمؤسسات
             $table->foreignId('brand_id')->nullable()->constrained()->onDelete('set null');

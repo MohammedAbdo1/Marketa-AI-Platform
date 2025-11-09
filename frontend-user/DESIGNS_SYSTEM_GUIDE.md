@@ -29,7 +29,7 @@ id, uuid, user_id, organization_id, name, emoji, order, created_at, updated_at
 
 #### 3. `user_favorites` (جديد)
 ```sql
-id, user_id, design_id, section_id, order, created_at
+id, user_id, creative_asset_id, section_id, order, created_at
 ```
 
 ---
@@ -47,8 +47,8 @@ id, user_id, design_id, section_id, order, created_at
 ### Favorites APIs:
 - `GET /api/favorites` - Get favorites with sections
 - `POST /api/favorites` - Add to favorites
-- `DELETE /api/favorites/{design_id}` - Remove from favorites
-- `PATCH /api/favorites/{design_id}` - Move to section
+- `DELETE /api/favorites/{creative_asset_id}` - Remove from favorites
+- `PATCH /api/favorites/{creative_asset_id}` - Move to section
 
 ### Sections APIs:
 - `GET /api/favorite-sections` - List sections

@@ -188,6 +188,18 @@ const handleSave = async () => {
     })
     
     lastSaved.value = new Date()
+    
+    const updated = designStore.currentDesign
+    if (updated && window.opener && !window.opener.closed) {
+      window.opener.postMessage(
+        {
+          type: 'creative-asset:updated',
+          payload: updated
+        },
+        window.location.origin
+      )
+    }
+
     console.log('Design saved successfully:', canvasData)
   } catch (error) {
     console.error('Save failed:', error)

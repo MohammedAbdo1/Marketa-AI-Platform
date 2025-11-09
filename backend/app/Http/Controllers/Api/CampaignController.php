@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Campaign;
-use App\Models\CampaignPost;
-use App\Models\Design;
+use App\Services\CreativeAssetService;
 use App\Models\Brand;
+use App\Models\CreativeAsset;
 use App\Services\PythonAIService;
 use App\Jobs\GenerateCampaignPosts;
 use Illuminate\Http\Request;
@@ -37,9 +37,18 @@ class CampaignController extends Controller
             $organization = $user->organization;
 
             $campaigns = Campaign::where('organization_id', $organization->id)
-                ->with(['brand', 'posts'])
+                ->with([
+                    'brand',
+                    'postAssets' => function ($query) {
+                        $query->orderBy('settings->order_number');
+                    }
+                ])
                 ->orderBy('created_at', 'desc')
                 ->paginate(15);
+
+            $campaigns->getCollection()->transform(function (Campaign $campaign) {
+                return $this->transformCampaignWithCreativeAssets($campaign);
+            });
 
             return response()->json([
                 'success' => true,
@@ -322,7 +331,8 @@ class CampaignController extends Controller
             $rid = $request->header('X-Request-ID', (string) Str::uuid());
             $request->headers->set('X-Request-ID', $rid);
             Log::info('Generate Campaign - start', ['request_id' => $rid, 'campaign_uuid' => $campaign->uuid]);
-
+            $creativeAssetService = app(CreativeAssetService::class);
+ 
             if ($campaign->organization_id !== Auth::user()->organization->id) {
                 abort(404);
             }
@@ -337,7 +347,7 @@ class CampaignController extends Controller
         // Optional rebuild: clear existing posts and reset state
         $rebuild = filter_var($request->input('rebuild', false), FILTER_VALIDATE_BOOLEAN);
         if ($rebuild === true) {
-            CampaignPost::where('campaign_id', $campaign->id)->delete();
+            $creativeAssetService->deleteCampaignPosts($campaign->id);
             $campaign->update([
                 'generation_status' => 'pending',
                 'generation_progress' => 0,
@@ -404,43 +414,13 @@ class CampaignController extends Controller
                 }
 
                 foreach ($posts as $index => $postData) {
-                    // Extract content (flexible multi-language support)
-                    $content = $postData['content'] ?? [];
-                    $primaryLanguage = $postData['primary_language'] ?? 'ar';
-                    
-                    // Extract hashtags (flexible multi-language support)
-                    $hashtags = $postData['hashtags'] ?? [];
-                    
-                    // Extract composition data
-                    $compositionLayers = $postData['composition_layers'] ?? null;
-                    $baseImageUrl = $postData['base_image_url'] ?? null;
-                    $isComposed = $postData['is_composed'] ?? false;
-                    
-                    CampaignPost::create([
-                        'campaign_id' => $campaign->id,
-                        'platform' => $postData['platform'] ?? 'instagram',
-                        'post_type' => $postData['post_type'] ?? 'image',
-                        'content' => $content,
-                        'primary_language' => $primaryLanguage,
-                        'hashtags' => $hashtags,
-                        'media_urls' => isset($postData['image_url']) ? [$postData['image_url']] : [],
-                        'media_prompts' => isset($postData['image_prompt']) ? [$postData['image_prompt']] : [],
-                        'scheduled_date' => null,
-                        'status' => 'pending',
-                        'ai_prompt_used' => $postData['ai_prompt_used'] ?? null,
-                        'ai_tokens_used' => $postData['tokens_used'] ?? 0,
-                        'ai_cost' => $postData['cost'] ?? 0,
-                        'order_number' => $index + 1,
-                        'week_number' => $postData['week'] ?? 1,
-                        'day_of_week' => $postData['day'] ?? null,
-                        'day_number' => $postData['day'] ?? null,
-                        'day_name' => $postData['day_name'] ?? null,
-                        'phase_name' => $postData['phase'] ?? null,
-                        'content_brief' => $postData['content_brief'] ?? null,
-                        'composition_layers' => $compositionLayers,
-                        'base_image_url' => $baseImageUrl,
-                        'is_composed' => $isComposed
-                    ]);
+                    $payload = $creativeAssetService->buildPayloadFromArray(
+                        $campaign,
+                        $postData,
+                        $index + 1
+                    );
+
+                    $creativeAssetService->create($payload);
                 }
 
                 $campaign->update([
@@ -529,13 +509,18 @@ class CampaignController extends Controller
                 abort(404);
             }
 
-            $campaign->load(['brand', 'posts' => function($query) {
-                $query->orderBy('order_number');
-            }]);
+            $campaign->load([
+                'brand',
+                'postAssets' => function ($query) {
+                    $query->orderBy('settings->order_number');
+                }
+            ]);
+
+            $transformed = $this->transformCampaignWithCreativeAssets($campaign);
 
             return response()->json([
                 'success' => true,
-                'data' => $campaign
+                'data' => $transformed
             ]);
         } catch (Exception $e) {
             return response()->json([
@@ -692,12 +677,14 @@ class CampaignController extends Controller
                 abort(404);
             }
 
+            $creativeAssetService = app(CreativeAssetService::class);
+
             return response()->json([
                 'success' => true,
                 'data' => [
                     'status' => $campaign->generation_status,
                     'progress' => $campaign->generation_progress,
-                    'posts_count' => $campaign->posts()->count()
+                    'posts_count' => $creativeAssetService->countCampaignPosts($campaign->id)
                 ]
             ]);
         } catch (Exception $e) {
@@ -999,6 +986,75 @@ class CampaignController extends Controller
         ];
     }
 
+    protected function transformCampaignWithCreativeAssets(Campaign $campaign): Campaign
+    {
+        $creativeAssetService = app(CreativeAssetService::class);
+
+        $postAssets = $campaign->relationLoaded('postAssets')
+            ? $campaign->postAssets
+            : $creativeAssetService->getCampaignPosts($campaign->id);
+
+        $transformedPosts = $postAssets->map(function (CreativeAsset $asset) {
+            $settings = is_array($asset->settings) ? $asset->settings : [];
+            $metadata = is_array($asset->metadata) ? $asset->metadata : [];
+            $content = is_array($asset->content) ? $asset->content : [];
+
+            $mediaUrls = $settings['media_urls'] ?? [];
+            if (!is_array($mediaUrls)) {
+                $decodedMedia = json_decode((string) $mediaUrls, true);
+                $mediaUrls = is_array($decodedMedia) ? $decodedMedia : [];
+            }
+            if (empty($mediaUrls) && $asset->thumbnail_url) {
+                $mediaUrls[] = $asset->thumbnail_url;
+            }
+
+            $hashtags = $metadata['hashtags'] ?? [];
+            if (is_string($hashtags)) {
+                $decodedHashtags = json_decode($hashtags, true);
+                $hashtags = is_array($decodedHashtags) ? $decodedHashtags : [];
+            }
+
+            return [
+                'id' => $asset->legacy_post_id ?? $asset->id,
+                'uuid' => $asset->uuid,
+                'creative_asset_id' => $asset->id,
+                'creative_asset_uuid' => $asset->uuid,
+                'campaign_id' => $asset->context_id,
+                'platform' => $settings['platform'] ?? null,
+                'post_type' => $settings['post_type'] ?? null,
+                'content' => $content['languages'] ?? $content,
+                'primary_language' => $settings['primary_language'] ?? null,
+                'hashtags' => $hashtags,
+                'media_urls' => $mediaUrls,
+                'media_prompts' => $settings['media_prompts'] ?? null,
+                'scheduled_date' => $settings['scheduled_date'] ?? null,
+                'scheduled_time' => $settings['scheduled_time'] ?? null,
+                'published_at' => $settings['published_at'] ?? null,
+                'status' => $asset->status,
+                'ai_prompt_used' => $metadata['ai_prompt_used'] ?? null,
+                'ai_tokens_used' => $metadata['ai_tokens_used'] ?? 0,
+                'ai_cost' => $metadata['ai_cost'] ?? 0,
+                'order_number' => $settings['order_number'] ?? 0,
+                'week_number' => $settings['week_number'] ?? null,
+                'day_of_week' => $settings['day_of_week'] ?? null,
+                'day_number' => $settings['day_number'] ?? null,
+                'day_name' => $settings['day_name'] ?? null,
+                'phase_name' => $settings['phase_name'] ?? null,
+                'content_brief' => $settings['content_brief'] ?? null,
+                'image_prompt' => $settings['image_prompt'] ?? null,
+                'composition_layers' => $content['composition_layers'] ?? null,
+                'base_image_url' => $content['base_image_url'] ?? null,
+                'is_composed' => $settings['is_composed'] ?? false,
+                'created_at' => $asset->created_at,
+                'updated_at' => $asset->updated_at,
+            ];
+        })->sortBy('order_number')->values();
+
+        $campaign->setRelation('posts', $transformedPosts);
+
+        return $campaign;
+    }
+
     public function suggestColors(Request $request): JsonResponse
     {
         try {
@@ -1046,7 +1102,7 @@ class CampaignController extends Controller
             }
 
             $validator = Validator::make($request->all(), [
-                'design_uuid' => 'required|exists:designs,uuid',
+                'design_uuid' => 'required|exists:creative_assets,uuid',
                 'platform' => 'required|string',
                 'scheduled_date' => 'nullable|date',
                 'scheduled_time' => 'nullable|date_format:H:i',
@@ -1064,7 +1120,9 @@ class CampaignController extends Controller
                 ], 422);
             }
 
-            $design = Design::where('uuid', $request->design_uuid)->firstOrFail();
+            $design = CreativeAsset::designs()
+                ->where('uuid', $request->design_uuid)
+                ->firstOrFail();
 
             // Attach with pivot data
             $campaign->designs()->syncWithoutDetaching([
@@ -1081,7 +1139,7 @@ class CampaignController extends Controller
             ]);
 
             // Increment design usage count
-            $design->incrementUsage();
+            app(CreativeAssetService::class)->incrementDesignUsage($design);
 
             return response()->json([
                 'success' => true,
@@ -1112,9 +1170,10 @@ class CampaignController extends Controller
                 ], 403);
             }
 
-            $design = Design::where('uuid', $designUuid)->firstOrFail();
+            $design = CreativeAsset::designs()
+                ->where('uuid', $designUuid)
+                ->firstOrFail();
 
-            // Detach
             $campaign->designs()->detach($design->id);
 
             return response()->json([

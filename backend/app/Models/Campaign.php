@@ -44,14 +44,12 @@ class Campaign extends Model
         'ai_generated_plans',
         'selected_plan_index',
         'status',
-        // Generation state fields
         'generation_status',
         'generation_progress',
         'generation_task_id',
         'ai_task_id',
         'generation_started_at',
         'generation_completed_at',
-        // Intelligence System fields
         'ai_analysis',
         'wizard_step',
         'wizard_data',
@@ -74,69 +72,61 @@ class Campaign extends Model
         'paid_ads_budget' => 'decimal:2',
         'generation_started_at' => 'datetime',
         'generation_completed_at' => 'datetime',
-        // Intelligence System casts
         'ai_analysis' => 'array',
         'wizard_data' => 'array',
         'is_complete' => 'boolean',
         'campaign_strategy' => 'array',
     ];
 
-    /**
-     * Get the organization that owns the campaign.
-     */
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class);
     }
 
-    /**
-     * Get the brand that owns the campaign.
-     */
     public function brand(): BelongsTo
     {
         return $this->belongsTo(Brand::class);
     }
 
-    /**
-     * Get the posts for the campaign.
-     */
-    public function posts(): HasMany
+    public function creativeAssets(): HasMany
     {
-        return $this->hasMany(CampaignPost::class);
+        return $this->hasMany(CreativeAsset::class, 'context_id')
+            ->where('context_type', self::class);
     }
 
-    /**
-     * Get the AI requests for the campaign.
-     */
+    public function postAssets(): HasMany
+    {
+        return $this->creativeAssets()->where('asset_type', 'campaign_post');
+    }
+
+    public function designAssets(): HasMany
+    {
+        return $this->creativeAssets()->where('asset_type', 'design');
+    }
+
     public function aiRequests(): HasMany
     {
         return $this->hasMany(AiRequest::class);
     }
 
-    /**
-     * Get designs linked to this campaign (many-to-many).
-     */
     public function designs(): BelongsToMany
     {
-        return $this->belongsToMany(Design::class, 'campaign_design')
-                    ->withPivot([
-                        'platform', 
-                        'scheduled_date', 
-                        'scheduled_time',
-                        'published_at',
-                        'status',
-                        'post_content_ar',
-                        'post_content_en',
-                        'hashtags',
-                        'order'
-                    ])
-                    ->withTimestamps()
-                    ->orderBy('campaign_design.order');
+        return $this->belongsToMany(CreativeAsset::class, 'campaign_creative_asset', 'campaign_id', 'creative_asset_id')
+            ->where('creative_assets.asset_type', 'design')
+            ->withPivot([
+                'platform',
+                'scheduled_date',
+                'scheduled_time',
+                'published_at',
+                'status',
+                'post_content_ar',
+                'post_content_en',
+                'hashtags',
+                'order',
+            ])
+            ->withTimestamps();
     }
 
-    /**
-     * Auto-generate UUID and bind routes by UUID
-     */
     protected static function boot()
     {
         parent::boot();
@@ -148,9 +138,6 @@ class Campaign extends Model
         });
     }
 
-    /**
-     * Use uuid for route model binding
-     */
     public function getRouteKeyName(): string
     {
         return 'uuid';

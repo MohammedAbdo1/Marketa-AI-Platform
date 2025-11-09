@@ -1,6 +1,83 @@
 import { defineStore } from 'pinia'
 import axios from '../axios'
 
+const normalizeCreativeAssetAsDesign = (asset) => {
+  if (!asset || typeof asset !== 'object') {
+    return null
+  }
+
+  const content = asset.content || {}
+  const settings = asset.settings || {}
+  const width =
+    asset.width ||
+    content?.dimensions?.width ||
+    settings?.dimensions?.width ||
+    1080
+  const height =
+    asset.height ||
+    content?.dimensions?.height ||
+    settings?.dimensions?.height ||
+    1080
+
+  const compositionLayers = content?.composition_layers || []
+  const compositionData = {
+    layers: Array.isArray(compositionLayers) ? compositionLayers : [],
+    dimensions: {
+      width,
+      height
+    }
+  }
+
+  if (
+    (!compositionData.layers || compositionData.layers.length === 0) &&
+    (asset.thumbnail_url || asset.preview_url || content?.final_image_url)
+  ) {
+    const imageUrl =
+      asset.thumbnail_url || asset.preview_url || content?.final_image_url
+
+    compositionData.layers = [
+      {
+        type: 'image',
+        url: imageUrl,
+        x: 0,
+        y: 0,
+        left: 0,
+        top: 0,
+        width,
+        height,
+        scaleX: 1,
+        scaleY: 1
+      }
+    ]
+  }
+
+  return {
+    id: asset.id,
+    uuid: asset.uuid,
+    title: asset.title || 'تصميم بدون عنوان',
+    description: asset.description,
+    status: asset.status,
+    width,
+    height,
+    composition_data: compositionData,
+    thumbnail_url: asset.thumbnail_url,
+    preview_url: asset.preview_url,
+    export_url:
+      asset.export_url || asset.preview_url || asset.thumbnail_url || content?.final_image_url,
+    is_template: asset.is_template || false,
+    is_public: asset.is_public || false,
+    source_type: asset.source_type || 'creative_asset',
+    source_id: asset.source_id,
+    source_model: asset.source_model,
+    context_type: asset.context_type,
+    context_id: asset.context_id,
+    metadata: asset.metadata || {},
+    settings,
+    content,
+    creative_asset: true
+  }
+}
+
 export const useDesignStore = defineStore('design', {
   state: () => ({
     designs: [],
@@ -114,11 +191,41 @@ export const useDesignStore = defineStore('design', {
       this.error = null
 
       try {
-        const response = await axios.get(`/designs/${uuid}`)
-        this.currentDesign = response.data
-        return response.data
+        let designData = null
+
+        // Try creative asset first (most campaign posts)
+        try {
+          const creativeAssetResponse = await axios.get(
+            `/creative-assets/${uuid}`
+          )
+          const normalized = normalizeCreativeAssetAsDesign(
+            creativeAssetResponse.data
+          )
+
+          if (normalized) {
+            designData = normalized
+          }
+        } catch (assetError) {
+          if (assetError.response?.status !== 404) {
+            this.error =
+              assetError.response?.data?.message ||
+              'Failed to fetch creative asset'
+            throw assetError
+          }
+        }
+
+        if (!designData) {
+          const response = await axios.get(`/designs/${uuid}`)
+          designData = response.data
+        }
+
+        this.currentDesign = designData
+        return designData
       } catch (error) {
-        this.error = error.response?.data?.message || 'Failed to fetch design'
+        if (!this.error) {
+          this.error =
+            error.response?.data?.message || 'Failed to fetch design'
+        }
         throw error
       } finally {
         this.loading = false
@@ -171,20 +278,34 @@ export const useDesignStore = defineStore('design', {
       this.error = null
 
       try {
-        const response = await axios.put(`/designs/${uuid}`, updates)
-        
-        // Update in list
-        const index = this.designs.findIndex(d => d.uuid === uuid)
-        if (index !== -1) {
-          this.designs[index] = response.data.design
-        }
-        
-        // Update current if it's the same
-        if (this.currentDesign?.uuid === uuid) {
-          this.currentDesign = response.data.design
+        const isCreativeAsset =
+          this.currentDesign?.creative_asset === true ||
+          this.currentDesign?.asset_type === 'campaign_post'
+
+        const endpoint = isCreativeAsset
+          ? `/creative-assets/${uuid}`
+          : `/designs/${uuid}`
+
+        const response = await axios.put(endpoint, updates)
+
+        let updatedDesign = response.data.design
+
+        if (isCreativeAsset) {
+          updatedDesign = normalizeCreativeAssetAsDesign(response.data.design) || this.currentDesign
         }
 
-        return response.data.design
+        if (updatedDesign) {
+          const index = this.designs.findIndex(d => d.uuid === uuid)
+          if (index !== -1) {
+            this.designs[index] = updatedDesign
+          }
+
+          if (this.currentDesign?.uuid === uuid) {
+            this.currentDesign = updatedDesign
+          }
+        }
+
+        return updatedDesign
       } catch (error) {
         this.error = error.response?.data?.message || 'Failed to update design'
         throw error
@@ -307,20 +428,13 @@ export const useDesignStore = defineStore('design', {
      * Load design into editor
      */
     async loadInEditor(uuid) {
-      try {
-        const design = await this.fetchDesign(uuid)
-        
-        // Import editor store
-        const { usePostEditorStore } = await import('./postEditor')
-        const editorStore = usePostEditorStore()
-        
-        // Load design data into editor
-        editorStore.loadDesign(design)
-        
-        return design
-      } catch (error) {
-        throw error
+      const design = await this.fetchDesign(uuid)
+
+      if (typeof window !== 'undefined') {
+        window.open(`/editor/${design?.uuid || uuid}`, '_blank', 'noopener')
       }
+
+      return design
     },
 
     /**
@@ -445,7 +559,7 @@ export const useDesignStore = defineStore('design', {
           await axios.delete(`/favorites/${designId}`)
         } else {
           // Add to favorites
-          await axios.post('/favorites', { design_id: designId, section_id: sectionId })
+          await axios.post('/favorites', { creative_asset_id: designId, section_id: sectionId })
         }
 
         // Update in designs list

@@ -1,47 +1,111 @@
 import axios from '@/axios'
 
+const resource = '/brands'
+
 export const brandService = {
-  // Get all brands
   async getBrands(params = {}) {
-    const response = await axios.get('/brands', { params })
-    return response.data
+    const { data } = await axios.get(resource, { params })
+    return data
   },
 
-  // Get single brand
   async getBrand(id) {
-    const response = await axios.get(`/brands/${id}`)
-    return response.data
+    const { data } = await axios.get(`${resource}/${id}`)
+    return data
   },
 
-  // Create new brand
-  async createBrand(data) {
-    const response = await axios.post('/brands', data)
-    return response.data
+  async createBrand(payload) {
+    const { data } = await axios.post(resource, payload)
+    return data
   },
 
-  // Update brand
-  async updateBrand(id, data) {
-    const response = await axios.put(`/brands/${id}`, data)
-    return response.data
+  async updateBrand(id, payload) {
+    const { data } = await axios.put(`${resource}/${id}`, payload)
+    return data
   },
 
-  // Delete brand
   async deleteBrand(id) {
-    const response = await axios.delete(`/brands/${id}`)
-    return response.data
+    const { data } = await axios.delete(`${resource}/${id}`)
+    return data
   },
 
-  // Upload brand logo
-  async uploadLogo(id, file) {
+  async uploadLogo(id, file, label = null) {
     const formData = new FormData()
     formData.append('logo', file)
-    
-    const response = await axios.post(`/brands/${id}/logo`, formData, {
+    if (label) {
+      formData.append('label', label)
+    }
+
+    const { data } = await axios.post(`${resource}/${id}/logo`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
     })
-    return response.data
+
+    return data
+  },
+
+  async listAssets(brandId) {
+    const { data } = await axios.get(`${resource}/${brandId}/assets`)
+    return data
+  },
+
+  async createAsset(brandId, payload) {
+    const formData = new FormData()
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value === undefined || value === null) return
+      if (key === 'file' && value instanceof File) {
+        formData.append('file', value)
+      } else if (Array.isArray(value) || typeof value === 'object') {
+        formData.append(key, JSON.stringify(value))
+      } else {
+        formData.append(key, value)
+      }
+    })
+
+    const { data } = await axios.post(`${resource}/${brandId}/assets`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    return data
+  },
+
+  async updateAsset(brandId, assetId, payload) {
+    const formData = new FormData()
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value === undefined) return
+      if (key === 'file' && value instanceof File) {
+        formData.append('file', value)
+      } else if (Array.isArray(value) || typeof value === 'object') {
+        formData.append(key, JSON.stringify(value))
+      } else {
+        formData.append(key, value)
+      }
+    })
+
+    const { data } = await axios.post(`${resource}/${brandId}/assets/${assetId}?_method=PUT`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    return data
+  },
+
+  async deleteAsset(brandId, assetId) {
+    const { data } = await axios.delete(`${resource}/${brandId}/assets/${assetId}`)
+    return data
+  },
+
+  async markAssetPrimary(brandId, assetId) {
+    const { data } = await axios.post(`${resource}/${brandId}/assets/${assetId}/primary`)
+    return data
+  },
+
+  async reorderAssets(brandId, order) {
+    const { data } = await axios.post(`${resource}/${brandId}/assets/reorder`, {
+      order
+    })
+    return data
   }
 }
 

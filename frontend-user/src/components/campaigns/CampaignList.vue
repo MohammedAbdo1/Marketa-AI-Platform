@@ -58,7 +58,7 @@
         <div class="list-col col-posts">
           <span class="posts-count">
             <i class="bx bx-images"></i>
-            {{ campaign.generated_posts?.length || 0 }}
+            {{ campaign.posts_count ?? campaign.generated_posts?.length ?? 0 }}
           </span>
         </div>
 
@@ -94,7 +94,77 @@ const campaignStore = useCampaignStore()
 
 const campaigns = computed(() => campaignStore.campaigns)
 
+const clampStep = (step) => {
+  const parsed = Number(step)
+  if (!Number.isFinite(parsed)) {
+    return 1
+  }
+  const rounded = Math.round(parsed)
+  return Math.min(Math.max(rounded || 1, 1), 4)
+}
+
+const hasGeneratedContent = (campaign) => {
+  if (typeof campaign.has_generated_content === 'boolean') {
+    return campaign.has_generated_content
+  }
+
+  if (typeof campaign.posts_count === 'number') {
+    return campaign.posts_count > 0
+  }
+
+  return Boolean(
+    (campaign.posts && campaign.posts.length > 0) ||
+    (campaign.creative_assets && campaign.creative_assets.length > 0) ||
+    (campaign.generated_posts && campaign.generated_posts.length > 0)
+  )
+}
+
+const shouldResumeWizard = (campaign) => {
+  const rawStatus = (campaign.status || '').toLowerCase()
+  const status = rawStatus === 'building' ? 'generating' : rawStatus
+  const generationStatus = (campaign.generation_status || '').toLowerCase()
+  const isExplicitlyComplete = campaign.is_complete === true
+
+  const generated = hasGeneratedContent(campaign)
+
+  if (['completed', 'active', 'ready'].includes(status) && (isExplicitlyComplete || generated)) {
+    return false
+  }
+
+  if (['draft', 'pending', 'pending_review'].includes(status)) {
+    return true
+  }
+
+  if (status === 'generating') {
+    if (generationStatus === 'completed' && generated && isExplicitlyComplete) {
+      return false
+    }
+    return true
+  }
+
+  if (['paused', 'archived'].includes(status)) {
+    return !generated
+  }
+
+  if (!isExplicitlyComplete || !generated) {
+    return true
+  }
+
+  return false
+}
+
 const openCampaign = (campaign) => {
+  if (shouldResumeWizard(campaign)) {
+    router.push({
+      name: 'campaign-wizard',
+      query: {
+        campaign: campaign.uuid,
+        step: clampStep(campaign.wizard_step || 1)
+      }
+    })
+    return
+  }
+
   router.push(`/dashboard/campaigns/${campaign.uuid}`)
 }
 
@@ -108,7 +178,13 @@ const getStatusLabel = (status) => {
     draft: t('campaigns.status_draft') || 'Draft',
     active: t('campaigns.status_active') || 'Active',
     completed: t('campaigns.status_completed') || 'Completed',
-    paused: t('campaigns.status_paused') || 'Paused'
+    paused: t('campaigns.status_paused') || 'Paused',
+    pending: t('campaigns.status_pending') || t('campaigns.status_draft') || 'Pending',
+    pending_review: t('campaigns.status_pending_review') || t('campaigns.status_draft') || 'Pending Review',
+    generating: t('campaigns.status_generating') || t('campaigns.status_processing') || 'Generating',
+    building: t('campaigns.status_generating') || t('campaigns.status_processing') || 'Generating',
+    ready: t('campaigns.status_ready') || t('campaigns.status_completed') || 'Ready',
+    archived: t('campaigns.status_archived') || 'Archived'
   }
   return statusMap[status] || status
 }

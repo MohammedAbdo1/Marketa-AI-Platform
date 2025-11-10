@@ -141,18 +141,52 @@ const displayPlatforms = computed(() => {
     : ['instagram', 'facebook', 'x']  // ← افتراضي للعرض فقط
 })
 
-const INCOMPLETE_STATUSES = ['draft', 'pending', 'building']
-const INCOMPLETE_GENERATION = ['pending', 'generating', 'failed']
+const hasGeneratedContent = computed(() => {
+  if (typeof props.campaign.has_generated_content === 'boolean') {
+    return props.campaign.has_generated_content
+  }
+
+  if (typeof props.campaign.posts_count === 'number') {
+    return props.campaign.posts_count > 0
+  }
+
+  return Boolean(
+    (props.campaign.posts && props.campaign.posts.length > 0) ||
+    (props.campaign.creative_assets && props.campaign.creative_assets.length > 0) ||
+    (props.campaign.generated_posts && props.campaign.generated_posts.length > 0)
+  )
+})
 
 const shouldResumeWizard = computed(() => {
-  const status = (props.campaign.status || '').toLowerCase()
+  const rawStatus = (props.campaign.status || '').toLowerCase()
+  const status = rawStatus === 'building' ? 'generating' : rawStatus
   const generationStatus = (props.campaign.generation_status || '').toLowerCase()
-  const incompleteStatus = INCOMPLETE_STATUSES.includes(status)
-  const incompleteGeneration = INCOMPLETE_GENERATION.includes(generationStatus)
-  const incompleteFlag = props.campaign.is_complete === false
-  const missingPosts = !props.campaign.posts || props.campaign.posts.length === 0
+  const isExplicitlyComplete = props.campaign.is_complete === true
 
-  return incompleteStatus || incompleteGeneration || incompleteFlag || missingPosts
+  if (['completed', 'active', 'ready'].includes(status) && (isExplicitlyComplete || hasGeneratedContent.value)) {
+    return false
+  }
+
+  if (['draft', 'pending', 'pending_review'].includes(status)) {
+    return true
+  }
+
+  if (status === 'generating') {
+    if (generationStatus === 'completed' && hasGeneratedContent.value && isExplicitlyComplete) {
+      return false
+    }
+    return true
+  }
+
+  if (['paused', 'archived'].includes(status)) {
+    return !hasGeneratedContent.value
+  }
+
+  if (!isExplicitlyComplete || !hasGeneratedContent.value) {
+    return true
+  }
+
+  return false
 })
 
 const getResumeStep = () => {
@@ -240,7 +274,12 @@ const getStatusLabel = (status) => {
     draft: t('campaigns.status_draft'),
     active: t('campaigns.status_active'),
     completed: t('campaigns.status_completed'),
-    paused: t('campaigns.status_paused')
+    paused: t('campaigns.status_paused'),
+    pending: t('campaigns.status_pending') || t('campaigns.status_draft'),
+    generating: t('campaigns.status_generating') || t('campaigns.status_processing') || 'Generating',
+    building: t('campaigns.status_generating') || t('campaigns.status_processing') || 'Generating',
+    ready: t('campaigns.status_ready') || t('campaigns.status_completed') || 'Ready',
+    pending_review: t('campaigns.status_pending_review') || t('campaigns.status_draft') || 'Pending Review'
   }
   return statusMap[status] || status
 }
@@ -276,6 +315,10 @@ const getPlatformName = (platform) => {
 }
 
 const getPostsCount = () => {
+  if (typeof props.campaign.posts_count === 'number') {
+    return props.campaign.posts_count
+  }
+
   return (
     props.campaign.posts?.length ||
     props.campaign.creative_assets?.length ||
@@ -460,6 +503,7 @@ onUnmounted(() => {
   line-height: 1.4;
   overflow: hidden;
   display: -webkit-box;
+  line-clamp: 2;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }

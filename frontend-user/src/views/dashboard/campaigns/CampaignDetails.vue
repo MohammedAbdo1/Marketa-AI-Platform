@@ -428,7 +428,10 @@ const filteredPosts = computed(() => {
       selectedPhase.value === 'all' ||
       post.phase_name === selectedPhase.value
 
-    const contentText = getPostContent(post).toLowerCase()
+    const rawContent = getPostContent(post)
+    const contentText = typeof rawContent === 'string'
+      ? rawContent.toLowerCase()
+      : JSON.stringify(rawContent ?? '').toLowerCase()
     const hashtags = (getHashtags(post) || []).join(' ').toLowerCase()
     const needle = searchTerm.value.trim().toLowerCase()
 
@@ -456,22 +459,73 @@ const formatDateRange = (start, end) => {
   }
 }
 
-const shouldResumeWizard = (campaign) => {
+const hasGeneratedContent = (campaign) => {
   if (!campaign) return false
-  const status = (campaign.status || '').toLowerCase()
-  const generationStatus = (campaign.generation_status || '').toLowerCase()
-  const incompleteStatuses = ['draft', 'pending', 'building']
-  const incompleteGeneration = ['pending', 'generating', 'failed']
-  const incompleteFlag = campaign.is_complete === false
-  const missingPosts =
-    !Array.isArray(campaign.posts) || campaign.posts.length === 0
+  if (typeof campaign.has_generated_content === 'boolean') {
+    return campaign.has_generated_content
+  }
 
-  return (
-    incompleteStatuses.includes(status) ||
-    incompleteGeneration.includes(generationStatus) ||
-    incompleteFlag ||
-    missingPosts
-  )
+  if (typeof campaign.posts_count === 'number') {
+    return campaign.posts_count > 0
+  }
+
+  const posts = Array.isArray(campaign.posts) ? campaign.posts : []
+  const creativeAssets = Array.isArray(campaign.creative_assets) ? campaign.creative_assets : []
+  const generatedPosts = Array.isArray(campaign.generated_posts) ? campaign.generated_posts : []
+  return posts.length > 0 || creativeAssets.length > 0 || generatedPosts.length > 0
+}
+
+const isCampaignComplete = (campaign) => {
+  if (!campaign) return false
+
+  const rawStatus = (campaign.status || '').toLowerCase()
+  const status = rawStatus === 'building' ? 'generating' : rawStatus
+  const generationStatus = (campaign.generation_status || '').toLowerCase()
+  const contentReady = hasGeneratedContent(campaign)
+  const explicitComplete = campaign.is_complete === true
+
+  if (['completed', 'active', 'ready'].includes(status)) {
+    return true
+  }
+
+  if (explicitComplete && contentReady) {
+    return true
+  }
+
+  if (generationStatus === 'completed' && contentReady) {
+    return true
+  }
+
+  return false
+}
+
+const shouldResumeWizard = (campaign) => {
+  if (!campaign) return true
+
+  const rawStatus = (campaign.status || '').toLowerCase()
+  const status = rawStatus === 'building' ? 'generating' : rawStatus
+  const generationStatus = (campaign.generation_status || '').toLowerCase()
+
+  if (['draft', 'pending', 'pending_review'].includes(status)) {
+    return true
+  }
+
+  if (['pending', 'generating', 'processing'].includes(generationStatus)) {
+    return true
+  }
+
+  if (status === 'generating') {
+    if (generationStatus === 'completed' && isCampaignComplete(campaign)) {
+      return false
+    }
+    return true
+  }
+
+  if (!isCampaignComplete(campaign)) {
+    return true
+  }
+
+  return false
 }
 
 const redirectToWizard = (campaign) => {
@@ -573,10 +627,21 @@ const getPostContent = (post) => {
 
   if (typeof post.content === 'object' && !Array.isArray(post.content)) {
     const primary = post.primary_language || 'ar'
-    return post.content[primary] || Object.values(post.content)[0] || ''
+    const localized = post.content[primary] || Object.values(post.content)[0]
+    return typeof localized === 'string'
+      ? localized
+      : JSON.stringify(localized ?? '')
   }
 
-  return post.content
+  if (Array.isArray(post.content)) {
+    return post.content
+      .map(item => (typeof item === 'string' ? item : JSON.stringify(item)))
+      .join(' ')
+  }
+
+  return typeof post.content === 'string'
+    ? post.content
+    : String(post.content ?? '')
 }
 
 const getHashtags = (post) => {

@@ -37,7 +37,9 @@ class GenerateCampaignPosts implements ShouldQueue
             $this->campaign->update([
                 'generation_status' => 'processing',
                 'generation_progress' => 0,
-                'generation_started_at' => now()
+                'generation_started_at' => now(),
+                'status' => 'generating',
+                'is_complete' => false,
             ]);
 
             Log::info("Starting campaign generation", ['campaign_id' => $this->campaign->id]);
@@ -70,7 +72,9 @@ class GenerateCampaignPosts implements ShouldQueue
             $this->campaign->update([
                 'generation_status' => 'failed',
                 'generation_progress' => 0,
-                'generation_completed_at' => now()
+                'generation_completed_at' => now(),
+                'status' => 'draft',
+                'is_complete' => false,
             ]);
 
             Log::error("Campaign generation failed", [
@@ -98,6 +102,36 @@ class GenerateCampaignPosts implements ShouldQueue
             $targetAudience = [];
         }
 
+        $platforms = $this->campaign->platforms;
+        if (is_string($platforms)) {
+            $decodedPlatforms = json_decode($platforms, true);
+            if (is_array($decodedPlatforms)) {
+                $platforms = $decodedPlatforms;
+            } else {
+                $platforms = array_filter(array_map('trim', explode(',', $platforms)));
+            }
+        } elseif (!is_array($platforms)) {
+            $platforms = [];
+        }
+        $platforms = array_values(array_filter($platforms, fn ($platform) => !empty($platform)));
+        if (empty($platforms)) {
+            $platforms = ['instagram'];
+        }
+
+        $languages = $this->campaign->languages ?? ['ar'];
+        if (is_string($languages)) {
+            $decodedLanguages = json_decode($languages, true);
+            $languages = is_array($decodedLanguages) ? $decodedLanguages : [$languages];
+        }
+        if (!is_array($languages) || empty($languages)) {
+            $languages = ['ar', 'en'];
+        }
+
+        $durationDays = (int) ($this->campaign->duration_days ?? 28);
+        $durationDays = max(7, $durationDays);
+        $postsPerWeek = (int) ($this->campaign->posts_per_week ?? 3);
+        $postsPerWeek = max(1, min($postsPerWeek, 14));
+
         return [
             'campaign_id' => $this->campaign->id,
             'business_type' => $this->campaign->business_type,
@@ -105,16 +139,16 @@ class GenerateCampaignPosts implements ShouldQueue
             'description' => $this->campaign->description,
             'goal' => $this->campaign->goal,
             'target_audience' => $targetAudience,
-            'duration_days' => $this->campaign->duration_days,
-            'platforms' => $this->campaign->platforms,
-            'posts_per_week' => $this->campaign->posts_per_week,
+            'duration_days' => $durationDays,
+            'platforms' => $platforms,
+            'posts_per_week' => $postsPerWeek,
             'brand_colors' => $brand ? [
                 'primary_color' => $brand->primary_color,
                 'secondary_color' => $brand->secondary_color,
                 'accent_color' => $brand->accent_color,
             ] : null,
             'brand_voice' => $brand ? $brand->brand_voice : null,
-            'languages' => $this->campaign->languages ?? ['ar', 'en'],
+            'languages' => array_values($languages),
             'mode' => $this->campaign->mode ?? 'quick',
         ];
     }
@@ -237,6 +271,8 @@ class GenerateCampaignPosts implements ShouldQueue
                 'generation_progress' => 100,
                 'generation_completed_at' => now(),
                 'ai_generated_plans' => $result['result'],
+                'status' => 'completed',
+                'is_complete' => true,
             ]);
 
             Log::info("Campaign generation completed successfully", [
@@ -257,6 +293,8 @@ class GenerateCampaignPosts implements ShouldQueue
             'generation_status' => 'failed',
             'generation_progress' => 0,
             'generation_completed_at' => now(),
+            'status' => 'draft',
+            'is_complete' => false,
         ]);
 
         Log::error("Campaign generation job failed", [

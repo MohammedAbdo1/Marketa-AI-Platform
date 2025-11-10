@@ -1,0 +1,28 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('brand_assets', function (Blueprint $table) {
+            $table->unsignedInteger('version')
+                ->default(1)
+                ->after('display_order');
+            $table->string('checksum', 128)
+                ->nullable()
+                ->after('version');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('brand_assets', function (Blueprint $table) {
+            $table->dropColumn(['checksum', 'version']);
+        });
+    }
+};
+

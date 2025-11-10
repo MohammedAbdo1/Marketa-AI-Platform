@@ -19,6 +19,8 @@ class CreativeAsset extends Model
         'uuid',
         'user_id',
         'organization_id',
+        'brand_id',
+        'brand_asset_id',
         'asset_type',
         'subtype',
         'title',
@@ -107,6 +109,16 @@ class CreativeAsset extends Model
         return $this->belongsToMany(Campaign::class, 'campaign_creative_asset', 'creative_asset_id', 'campaign_id');
     }
 
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(Brand::class);
+    }
+
+    public function brandAsset(): BelongsTo
+    {
+        return $this->belongsTo(BrandAsset::class);
+    }
+
     public function favorites(): HasMany
     {
         return $this->hasMany(UserFavorite::class, 'creative_asset_id');
@@ -118,6 +130,11 @@ class CreativeAsset extends Model
     public function scopeType(Builder $query, string $type): Builder
     {
         return $query->where('asset_type', $type);
+    }
+
+    public function scopeForBrand(Builder $query, int $brandId): Builder
+    {
+        return $query->where('brand_id', $brandId);
     }
 
     public function scopeCampaignPosts(Builder $query): Builder

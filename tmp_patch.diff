@@ -1,0 +1,55 @@
+*** Begin Patch
+*** Update File: frontend-user/src/views/dashboard/campaigns/CampaignWizard.vue
+@@
+-onMounted(async () => {
+-  // Check for incomplete drafts
+-  await campaignStore.fetchDrafts()
+-  
+-  if (!currentCampaignUuid.value && campaignStore.drafts.length > 0) {
+-    showDraftDialog.value = true
+-  } else {
+-    startNewCampaign()
+-  }
+-  
+-  // Load brands for step 3
+-  await brandStore.fetchBrands()
+-  
+-  // Setup auto-save interval (every 30 seconds)
+-  autoSaveInterval.value = setInterval(async () => {
+-    if (hasChanges.value && currentCampaignUuid.value) {
+-      await saveWizardProgress(currentStep.value)
+-    }
+-  }, 30000)
+-})
++onMounted(async () => {
++  startNewCampaign()
++
++  const queryCampaign = typeof route.query.campaign === 'string' ? route.query.campaign : null
++  const queryStep = Number(route.query.step)
++
++  if (queryCampaign) {
++    try {
++      const draft = await campaignStore.fetchCampaign(queryCampaign)
++      if (draft) {
++        resumeDraft(draft, { silent: true })
++        if (!Number.isNaN(queryStep) && queryStep >= 1 && queryStep <= totalSteps) {
++          currentStep.value = queryStep
++        }
++        router.replace({ name: 'campaign-wizard' })
++      }
++    } catch (error) {
++      console.error('Failed to load campaign draft from query:', error)
++      toast.error('Failed to load saved campaign. Starting a new one.')
++      resetWizardState()
++    }
++  }
++
++  await brandStore.fetchBrands()
++
++  autoSaveInterval.value = setInterval(async () => {
++    if (hasChanges.value && currentCampaignUuid.value) {
++      await saveWizardProgress(currentStep.value)
++    }
++  }, 30000)
++})
+*** End Patch

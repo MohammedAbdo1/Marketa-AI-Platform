@@ -26,57 +26,63 @@
       </div>
     </div>
 
-    <!-- Progress Bar -->
-    <div class="wizard-progress mb-4">
-      <div class="progress">
-        <div 
-          class="progress-bar" 
-          :style="{ width: progressPercentage + '%' }"
-        ></div>
-      </div>
-      <div class="d-flex justify-content-between mt-2">
-        <span class="text-muted">{{ $t('campaigns.wizard.step') }} {{ currentStep }} {{ $t('common.of') }} {{ totalSteps }}</span>
-        <span class="text-muted">{{ Math.round(progressPercentage) }}%</span>
-      </div>
+    <div v-if="isInitializing" class="wizard-loading">
+      <div class="spinner-border text-primary me-2" role="status"></div>
+      <span>جارٍ تحميل بيانات الحملة...</span>
     </div>
+    <template v-else>
+      <!-- Progress Bar -->
+      <div class="wizard-progress mb-4">
+        <div class="progress">
+          <div 
+            class="progress-bar" 
+            :style="{ width: progressPercentage + '%' }"
+          ></div>
+        </div>
+        <div class="d-flex justify-content-between mt-2">
+          <span class="text-muted">{{ $t('campaigns.wizard.step') }} {{ currentStep }} {{ $t('common.of') }} {{ totalSteps }}</span>
+          <span class="text-muted">{{ Math.round(progressPercentage) }}%</span>
+        </div>
+      </div>
 
-    <!-- Wizard Steps -->
-    <div class="wizard-content">
-      <!-- Step 1: Business Basics -->
-      <WizardStep1Business 
-        v-if="currentStep === 1"
-        v-model:wizardData="wizardData"
-        @next="nextStep"
-        @back="previousStep"
-      />
+      <!-- Wizard Steps -->
+      <div class="wizard-content">
+        <!-- Step 1: Business Basics -->
+        <WizardStep1Business 
+          v-if="currentStep === 1"
+          v-model:wizardData="wizardData"
+          @next="nextStep"
+          @back="previousStep"
+        />
 
-      <!-- Step 2: Campaign Goal -->
-      <WizardStep2Goal 
-        v-if="currentStep === 2"
-        v-model:wizardData="wizardData"
-        @next="nextStep"
-        @back="previousStep"
-      />
+        <!-- Step 2: Campaign Goal -->
+        <WizardStep2Goal 
+          v-if="currentStep === 2"
+          v-model:wizardData="wizardData"
+          @next="nextStep"
+          @back="previousStep"
+        />
 
-      <!-- Step 3: Brand & Preferences -->
-      <WizardStep3Brand 
-        v-if="currentStep === 3"
-        v-model:wizardData="wizardData"
-        @next="nextStep"
-        @back="previousStep"
-      />
+        <!-- Step 3: Brand & Preferences -->
+        <WizardStep3Brand 
+          v-if="currentStep === 3"
+          v-model:wizardData="wizardData"
+          @next="nextStep"
+          @back="previousStep"
+        />
 
-      <!-- Step 4: Preview & Generate -->
-      <WizardStep4Preview 
-        v-if="currentStep === 4"
-        v-model:wizardData="wizardData"
-        :preview="campaignStore.preview"
-        :loading="campaignStore.loading"
-        :campaign-uuid="currentCampaignUuid"
-        @generate="generateCampaign"
-        @back="previousStep"
-      />
-    </div>
+        <!-- Step 4: Preview & Generate -->
+        <WizardStep4Preview 
+          v-if="currentStep === 4"
+          v-model:wizardData="wizardData"
+          :preview="campaignStore.preview"
+          :loading="campaignStore.loading"
+          :campaign-uuid="currentCampaignUuid"
+          @generate="generateCampaign"
+          @back="previousStep"
+        />
+      </div>
+    </template>
 
     <!-- Loading Overlay -->
     <div v-if="loading" class="loading-overlay">
@@ -96,7 +102,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useCampaignStore } from '@/stores/campaign'
 import { useBrandStore } from '@/stores/brand'
 import { useToast } from 'vue-toastification'
@@ -107,6 +113,7 @@ import WizardStep4Preview from './wizard/WizardStep4Preview.vue'
 import DraftResumeDialog from '@/components/campaigns/DraftResumeDialog.vue'
 
 const router = useRouter()
+const route = useRoute()
 const campaignStore = useCampaignStore()
 const brandStore = useBrandStore()
 const toast = useToast()
@@ -137,13 +144,26 @@ const defaultWizardState = () => ({
 const wizardData = ref(defaultWizardState())
 
 const loading = ref(false)
+const isInitializing = ref(true)
 const generationProgress = ref(0)
 const generationInterval = ref(null)
 
 // Computed
 const progressPercentage = computed(() => {
+  if (isInitializing.value || !currentStep.value) {
+    return 0
+  }
   return (currentStep.value / totalSteps) * 100
 })
+
+const clampStep = (step) => {
+  const parsed = Number(step)
+  if (!Number.isFinite(parsed)) {
+    return 1
+  }
+  const rounded = Math.round(parsed)
+  return Math.min(Math.max(rounded || 1, 1), totalSteps)
+}
 
 // Helpers
 const buildWizardSnapshot = () => ({
@@ -155,9 +175,9 @@ const buildWizardSnapshot = () => ({
   step2: {
     campaign_goal: wizardData.value.campaign_goal,
     target_audience: wizardData.value.target_audience,
-    duration_weeks: wizardData.value.duration_weeks,
+    duration_weeks: Number(wizardData.value.duration_weeks) || defaultWizardState().duration_weeks,
     platforms: wizardData.value.platforms,
-    posts_per_week: wizardData.value.posts_per_week
+    posts_per_week: Number(wizardData.value.posts_per_week) || defaultWizardState().posts_per_week
   },
   step3: {
     brand_id: wizardData.value.brand_id,
@@ -179,8 +199,8 @@ const buildUpdatePayload = (step) => {
     goal: wizardData.value.campaign_goal || 'awareness',
     target_audience: wizardData.value.target_audience,
     platforms: wizardData.value.platforms,
-    duration_weeks: wizardData.value.duration_weeks,
-    posts_per_week: wizardData.value.posts_per_week,
+    duration_weeks: Number(wizardData.value.duration_weeks) || defaultWizardState().duration_weeks,
+    posts_per_week: Number(wizardData.value.posts_per_week) || defaultWizardState().posts_per_week,
     mode: wizardData.value.mode
   }
 
@@ -263,11 +283,12 @@ const previousStep = () => {
 }
 
 // Draft Management Methods
-const resumeDraft = (draft) => {
-  currentCampaignUuid.value = draft.uuid
-  currentStep.value = draft.wizard_step || 1
+const loadCampaignIntoWizard = (campaign, { toastMessage = null, stepOverride = null } = {}) => {
+  if (!campaign) return
 
-  const snapshot = draft.wizard_data || {}
+  currentCampaignUuid.value = campaign.uuid
+
+  const snapshot = campaign.wizard_data || {}
   const defaults = defaultWizardState()
 
   wizardData.value = {
@@ -278,23 +299,72 @@ const resumeDraft = (draft) => {
     ...snapshot.step4
   }
 
-  wizardData.value.business_type = snapshot.step1?.business_type ?? draft.business_type ?? defaults.business_type
-  wizardData.value.product_name = snapshot.step1?.product_name ?? draft.name ?? defaults.product_name
-  wizardData.value.description = snapshot.step1?.description ?? draft.description ?? defaults.description
-  wizardData.value.campaign_goal = snapshot.step2?.campaign_goal ?? draft.goal ?? defaults.campaign_goal
-  wizardData.value.target_audience = snapshot.step2?.target_audience ?? draft.target_audience ?? defaults.target_audience
+  wizardData.value.business_type = snapshot.step1?.business_type ?? campaign.business_type ?? defaults.business_type
+  wizardData.value.product_name = snapshot.step1?.product_name ?? campaign.name ?? defaults.product_name
+  wizardData.value.description = snapshot.step1?.description ?? campaign.description ?? defaults.description
+  wizardData.value.campaign_goal = snapshot.step2?.campaign_goal ?? campaign.goal ?? defaults.campaign_goal
+  wizardData.value.target_audience = snapshot.step2?.target_audience ?? campaign.target_audience ?? defaults.target_audience
   wizardData.value.duration_weeks = snapshot.step2?.duration_weeks
-    ?? (draft.duration_days ? Math.max(1, Math.round(draft.duration_days / 7)) : defaults.duration_weeks)
-  wizardData.value.platforms = snapshot.step2?.platforms ?? draft.platforms ?? defaults.platforms
-  wizardData.value.posts_per_week = snapshot.step2?.posts_per_week ?? draft.posts_per_week ?? defaults.posts_per_week
-  wizardData.value.brand_id = snapshot.step3?.brand_id ?? draft.brand_id ?? defaults.brand_id
+    ?? (campaign.duration_days ? Math.max(1, Math.round(campaign.duration_days / 7)) : defaults.duration_weeks)
+  wizardData.value.duration_weeks = Number(wizardData.value.duration_weeks) || defaults.duration_weeks
+  wizardData.value.platforms = snapshot.step2?.platforms ?? campaign.platforms ?? defaults.platforms
+  wizardData.value.posts_per_week = snapshot.step2?.posts_per_week ?? campaign.posts_per_week ?? defaults.posts_per_week
+  wizardData.value.posts_per_week = Number(wizardData.value.posts_per_week) || defaults.posts_per_week
+  wizardData.value.brand_id = snapshot.step3?.brand_id ?? campaign.brand_id ?? defaults.brand_id
   wizardData.value.brand_colors = snapshot.step3?.brand_colors ?? defaults.brand_colors
-  wizardData.value.brand_voice = snapshot.step3?.brand_voice ?? defaults.brand_voice
-  wizardData.value.mode = snapshot.step4?.mode ?? draft.mode ?? defaults.mode
+  wizardData.value.brand_voice = snapshot.step3?.brand_voice ?? campaign.brand_voice ?? campaign.tone_of_voice ?? defaults.brand_voice
+  wizardData.value.mode = snapshot.step4?.mode ?? campaign.mode ?? defaults.mode
 
+  currentStep.value = clampStep(stepOverride ?? campaign.wizard_step ?? 1)
   showDraftDialog.value = false
   hasChanges.value = false
-  toast.success('تم استئناف الحملة')
+
+  isInitializing.value = false
+
+  if (toastMessage) {
+    toast.success(toastMessage)
+  }
+}
+
+const resumeDraft = (draft, { silent = false } = {}) => {
+  loadCampaignIntoWizard(draft, { toastMessage: silent ? null : 'تم استئناف الحملة' })
+}
+
+const loadCampaignByUuid = async (uuid, step) => {
+  isInitializing.value = true
+  try {
+    const campaign = await campaignStore.fetchCampaign(uuid)
+    loadCampaignIntoWizard(campaign, {
+      toastMessage: null,
+      stepOverride: step !== undefined ? clampStep(step) : null
+    })
+  } catch (error) {
+    console.error('Failed to load campaign by uuid:', error)
+    toast.error('تعذّر تحميل الحملة المحددة')
+    if (campaignStore.drafts.length > 0) {
+      showDraftDialog.value = true
+    } else {
+      startNewCampaign()
+    }
+    isInitializing.value = false
+  }
+}
+
+const initializeWizard = async () => {
+  isInitializing.value = true
+  await campaignStore.fetchDrafts()
+
+  const routeCampaignUuid = route.query.campaign
+  const routeStep = route.query.step
+
+  if (routeCampaignUuid) {
+    await loadCampaignByUuid(routeCampaignUuid, routeStep)
+  } else if (!currentCampaignUuid.value && campaignStore.drafts.length > 0) {
+    showDraftDialog.value = true
+    isInitializing.value = false
+  } else {
+    startNewCampaign()
+  }
 }
 
 const discardDraft = async (draft) => {
@@ -322,6 +392,7 @@ const resetWizardState = () => {
 const startNewCampaign = () => {
   resetWizardState()
   showDraftDialog.value = false
+  isInitializing.value = false
 }
 
 const handleCancel = async () => {
@@ -335,6 +406,34 @@ const handleCancel = async () => {
 watch(wizardData, () => {
   hasChanges.value = true
 }, { deep: true })
+
+watch(
+  () => [route.query.campaign, route.query.step],
+  async ([campaignUuid, step], [prevCampaignUuid, prevStep]) => {
+    if (campaignUuid === prevCampaignUuid && step === prevStep) {
+      return
+    }
+
+    if (campaignUuid) {
+      isInitializing.value = true
+      if (campaignUuid === currentCampaignUuid.value) {
+        if (step !== undefined) {
+          currentStep.value = clampStep(step)
+        }
+        isInitializing.value = false
+        return
+      }
+      await loadCampaignByUuid(campaignUuid, step)
+    } else if (!currentCampaignUuid.value) {
+      if (campaignStore.drafts.length > 0) {
+        showDraftDialog.value = true
+      } else {
+        startNewCampaign()
+      }
+      isInitializing.value = false
+    }
+  }
+)
 
 const generateCampaign = async () => {
   try {
@@ -426,15 +525,8 @@ const startProgressPolling = (campaignUuid) => {
 
 // Lifecycle
 onMounted(async () => {
-  // Check for incomplete drafts
-  await campaignStore.fetchDrafts()
-  
-  if (!currentCampaignUuid.value && campaignStore.drafts.length > 0) {
-    showDraftDialog.value = true
-  } else {
-    startNewCampaign()
-  }
-  
+  await initializeWizard()
+
   // Load brands for step 3
   await brandStore.fetchBrands()
   
@@ -483,6 +575,15 @@ onUnmounted(() => {
 
 .wizard-content {
   min-height: 400px;
+}
+
+.wizard-loading {
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--color-text-secondary);
 }
 
 .loading-overlay {

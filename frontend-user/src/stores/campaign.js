@@ -77,10 +77,34 @@ const normalizeCampaignPayload = (payload = {}) => {
     ? payload.creative_assets
     : []
 
+  const rawStatus = typeof payload.status === 'string' ? payload.status.toLowerCase() : payload.status
+  const normalizedStatus = rawStatus === 'building' ? 'generating' : rawStatus
+
+  const platforms = Array.isArray(payload.platforms)
+    ? payload.platforms
+    : (typeof payload.platforms === 'string'
+        ? payload.platforms.split(',').map(item => item.trim()).filter(Boolean)
+        : [])
+
+  const derivedPostsCount =
+    typeof payload.posts_count === 'number'
+      ? payload.posts_count
+      : posts.length
+
+  const hasGeneratedContent =
+    typeof payload.has_generated_content === 'boolean'
+      ? payload.has_generated_content
+      : derivedPostsCount > 0 ||
+        creativeAssets.length > 0
+
   return {
     ...payload,
+    status: normalizedStatus ?? payload.status ?? 'draft',
+    platforms,
     posts: posts.map(normalizePostPayload),
     creative_assets: creativeAssets,
+    posts_count: derivedPostsCount,
+    has_generated_content: hasGeneratedContent
   }
 }
 
@@ -217,7 +241,7 @@ export const useCampaignStore = defineStore('campaign', {
           this.currentCampaign = normalized
         }
         const draftIndex = this.drafts.findIndex(draft => draft.uuid === uuid)
-        if (normalized?.status === 'draft' || normalized?.status === 'building') {
+        if (['draft', 'pending', 'pending_review', 'generating'].includes(normalized?.status)) {
           if (draftIndex !== -1) {
             this.drafts.splice(draftIndex, 1, normalized)
           } else {

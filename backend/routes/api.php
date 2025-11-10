@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\Auth\LoginController;
 use App\Http\Controllers\Api\Auth\ProfileController;
 use App\Http\Controllers\Api\Auth\RegisterController;
 use App\Http\Controllers\Api\Auth\SocialAuthController;
+use App\Http\Controllers\Api\BrandAssetController;
 use App\Http\Controllers\Api\BrandController;
 use App\Http\Controllers\Api\CampaignController;
 use App\Http\Controllers\Api\CreativeAssetController;
@@ -110,7 +111,17 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Brands Management
     Route::apiResource('brands', BrandController::class)->middleware('rate.limit:write');
-    Route::post('brands/{id}/logo', [BrandController::class, 'uploadLogo'])->middleware('rate.limit:write');
+    Route::post('brands/{brand}/logo', [BrandController::class, 'uploadLogo'])->middleware('rate.limit:write');
+
+    Route::prefix('brands/{brand}')->middleware('rate.limit:write')->group(function () {
+        Route::get('assets', [BrandAssetController::class, 'index'])->name('brands.assets.index');
+        Route::post('assets', [BrandAssetController::class, 'store'])->name('brands.assets.store');
+        Route::post('assets/reorder', [BrandAssetController::class, 'reorder'])->name('brands.assets.reorder');
+        Route::post('assets/{asset}/primary', [BrandAssetController::class, 'makePrimary'])->name('brands.assets.primary');
+        Route::put('assets/{asset}', [BrandAssetController::class, 'update'])->name('brands.assets.update');
+        Route::patch('assets/{asset}', [BrandAssetController::class, 'update']);
+        Route::delete('assets/{asset}', [BrandAssetController::class, 'destroy'])->name('brands.assets.destroy');
+    });
 
     // Draft listing helpers (placed before resource to avoid UUID collisions)
     Route::get('campaigns/drafts', [CampaignController::class, 'getDrafts'])->middleware('rate.limit:read');

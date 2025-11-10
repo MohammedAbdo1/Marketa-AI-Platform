@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Campaign;
-use App\Services\CreativeAssetService;
 use App\Models\Brand;
+use App\Models\Campaign;
 use App\Models\CreativeAsset;
+use App\Services\CreativeAssetService;
 use App\Services\PythonAIService;
 use App\Jobs\GenerateCampaignPosts;
 use Illuminate\Http\Request;
@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Exception;
 use Illuminate\Support\Arr;
+use Illuminate\Validation\Rule;
 
 class CampaignController extends Controller
 {
@@ -37,17 +38,13 @@ class CampaignController extends Controller
             $organization = $user->organization;
 
             $campaigns = Campaign::where('organization_id', $organization->id)
-                ->with([
-                    'brand',
-                    'postAssets' => function ($query) {
-                        $query->orderBy('settings->order_number');
-                    }
-                ])
+                ->with(['brand'])
+                ->withCount(['postAssets as posts_count'])
                 ->orderBy('created_at', 'desc')
                 ->paginate(15);
 
             $campaigns->getCollection()->transform(function (Campaign $campaign) {
-                return $this->transformCampaignWithCreativeAssets($campaign);
+                return $this->transformCampaignSummary($campaign);
             });
 
             return response()->json([
@@ -102,6 +99,9 @@ class CampaignController extends Controller
     public function store(Request $request): JsonResponse
     {
         try {
+            $user = Auth::user();
+            $organizationId = optional($user->organization)->id;
+
             $validator = Validator::make($request->all(), [
                 'name' => 'required|string|max:255',
                 'business_type' => 'required|string',
@@ -112,7 +112,13 @@ class CampaignController extends Controller
                 'duration_days' => 'nullable|integer|min:7',
                 'duration_weeks' => 'nullable|integer|min:1',
                 'posts_per_week' => 'nullable|integer|min:1|max:7',
-                'brand_id' => 'nullable|exists:brands,id',
+                'brand_id' => [
+                    'nullable',
+                    Rule::exists('brands', 'id')
+                        ->where(fn ($query) => $query
+                            ->where('organization_id', $organizationId)
+                            ->whereNull('deleted_at')),
+                ],
                 'mode' => 'nullable|in:quick,advanced',
                 'languages' => 'nullable|array',
                 'wizard_step' => 'nullable|integer|min:1|max:10',
@@ -127,8 +133,7 @@ class CampaignController extends Controller
                 ], 422);
             }
 
-            $user = Auth::user();
-            $organizationId = optional($user->organization)->id;
+            $brandId = $this->resolveBrandId($organizationId, $request->brand_id, true);
 
             $wizardStep = $request->wizard_step ?? 1;
             $durationDays = $request->duration_days
@@ -148,7 +153,7 @@ class CampaignController extends Controller
             $campaign = Campaign::create([
                 'user_id' => $user->id,
                 'organization_id' => $organizationId,
-                'brand_id' => $request->brand_id,
+                'brand_id' => $brandId,
                 'name' => $request->name,
                 'business_type' => $request->business_type,
                 'description' => $request->description,
@@ -170,10 +175,15 @@ class CampaignController extends Controller
                 'is_complete' => false,
             ]);
 
+            $freshCampaign = $campaign->fresh()
+                ->load('brand')
+                ->loadCount(['postAssets as posts_count']);
+            $responseCampaign = $this->transformCampaignSummary($freshCampaign);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Campaign created successfully',
-                'data' => $campaign->fresh()->load('brand')
+                'data' => $responseCampaign
             ], 201);
         } catch (Exception $e) {
             return response()->json([
@@ -354,6 +364,8 @@ class CampaignController extends Controller
                 'generation_started_at' => null,
                 'generation_completed_at' => null,
                 'ai_generated_plans' => null,
+                'status' => 'draft',
+                'is_complete' => false,
             ]);
             Log::info('Generate Campaign - rebuild requested', ['request_id' => $rid, 'campaign_uuid' => $campaign->uuid]);
         }
@@ -372,6 +384,36 @@ class CampaignController extends Controller
 
                 $brand = $campaign->brand;
 
+                $platforms = $campaign->platforms;
+                if (is_string($platforms)) {
+                    $decodedPlatforms = json_decode($platforms, true);
+                    if (is_array($decodedPlatforms)) {
+                        $platforms = $decodedPlatforms;
+                    } else {
+                        $platforms = array_filter(array_map('trim', explode(',', $platforms)));
+                    }
+                } elseif (!is_array($platforms)) {
+                    $platforms = [];
+                }
+                $platforms = array_values(array_filter($platforms, fn ($platform) => !empty($platform)));
+                if (empty($platforms)) {
+                    $platforms = ['instagram'];
+                }
+
+                $languages = $campaign->languages ?? ['ar'];
+                if (is_string($languages)) {
+                    $decodedLanguages = json_decode($languages, true);
+                    $languages = is_array($decodedLanguages) ? $decodedLanguages : [$languages];
+                }
+                if (!is_array($languages) || empty($languages)) {
+                    $languages = ['ar', 'en'];
+                }
+
+                $durationDays = (int) ($campaign->duration_days ?? 28);
+                $durationDays = max(7, $durationDays);
+                $postsPerWeek = (int) ($campaign->posts_per_week ?? 3);
+                $postsPerWeek = max(1, min($postsPerWeek, 14));
+
                 $aiData = [
                     'campaign_id' => $campaign->id,
                     'business_type' => $campaign->business_type,
@@ -379,16 +421,16 @@ class CampaignController extends Controller
                     'description' => $campaign->description,
                     'goal' => $campaign->goal,
                     'target_audience' => $targetAudience,
-                    'duration_days' => $campaign->duration_days,
-                    'platforms' => $campaign->platforms,
-                    'posts_per_week' => $campaign->posts_per_week,
+                    'duration_days' => $durationDays,
+                    'platforms' => $platforms,
+                    'posts_per_week' => $postsPerWeek,
                     'brand_colors' => $brand ? [
                         'primary_color' => $brand->primary_color,
                         'secondary_color' => $brand->secondary_color,
                         'accent_color' => $brand->accent_color
                     ] : null,
                     'brand_voice' => $brand ? $brand->brand_voice : null,
-                    'languages' => $campaign->languages ?? ['ar', 'en'],
+                    'languages' => array_values($languages),
                     'mode' => $campaign->mode ?? 'quick'
                 ];
 
@@ -396,7 +438,9 @@ class CampaignController extends Controller
                 $campaign->update([
                     'generation_status' => 'generating',
                     'generation_progress' => 0,
-                    'generation_started_at' => now()
+                    'generation_started_at' => now(),
+                    'status' => 'generating',
+                    'is_complete' => false,
                 ]);
 
                 $result = $this->aiService->generateCampaignInline($aiData);
@@ -427,7 +471,9 @@ class CampaignController extends Controller
                     'generation_status' => 'completed',
                     'generation_progress' => 100,
                     'generation_completed_at' => now(),
-                    'ai_generated_plans' => $payload
+                    'ai_generated_plans' => $payload,
+                    'status' => 'completed',
+                    'is_complete' => true,
                 ]);
 
                 Log::info('Generate Campaign - inline done', ['request_id' => $rid, 'campaign_uuid' => $campaign->uuid]);
@@ -463,6 +509,14 @@ class CampaignController extends Controller
                 ], 503);
             }
 
+            $campaign->update([
+                'status' => 'generating',
+                'is_complete' => false,
+                'generation_status' => 'generating',
+                'generation_progress' => 0,
+                'generation_started_at' => now(),
+            ]);
+
             // Dispatch background job
             Log::info("Dispatching GenerateCampaignPosts job", ['campaign_uuid' => $campaign->uuid, 'request_id' => $rid]);
             try {
@@ -491,6 +545,11 @@ class CampaignController extends Controller
             ]);
         } catch (Exception $e) {
             Log::error('Generate Campaign - error', ['request_id' => isset($rid) ? $rid : null, 'error' => $e->getMessage()]);
+            $campaign->update([
+                'status' => 'draft',
+                'is_complete' => false,
+                'generation_status' => 'failed',
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to start generation',
@@ -553,7 +612,14 @@ class CampaignController extends Controller
                 'duration_weeks' => 'sometimes|integer|min:1',
                 'posts_per_week' => 'sometimes|integer|min:1|max:7',
                 'languages' => 'sometimes|array',
-                'brand_id' => 'sometimes|exists:brands,id',
+                'brand_id' => [
+                    'sometimes',
+                    'nullable',
+                    Rule::exists('brands', 'id')
+                        ->where(fn ($query) => $query
+                            ->where('organization_id', $campaign->organization_id)
+                            ->whereNull('deleted_at')),
+                ],
                 'wizard_step' => 'sometimes|integer|min:1|max:10',
                 'wizard_data' => 'sometimes|array'
             ]);
@@ -607,25 +673,32 @@ class CampaignController extends Controller
                 $payload['languages'] = $request->languages ?? ['ar'];
             }
 
+            if ($request->has('brand_id')) {
+                $payload['brand_id'] = $request->brand_id
+                    ? $this->resolveBrandId($campaign->organization_id, $request->brand_id, false)
+                    : null;
+            }
+
             $campaign->fill($payload);
 
-            // Auto-advance campaign status based on wizard progress
-            if (array_key_exists('wizard_step', $payload)) {
-                $nextStep = $payload['wizard_step'];
-                if ($campaign->status === 'draft' && $nextStep >= 2) {
-                    $campaign->status = 'building';
-                }
-                if ($campaign->status === 'building' && $nextStep < 2) {
+            if (array_key_exists('wizard_step', $payload) && $payload['wizard_step'] < 4) {
+                $campaign->is_complete = false;
+                if ($campaign->status === 'completed') {
                     $campaign->status = 'draft';
                 }
             }
 
             $campaign->save();
 
+            $freshCampaign = $campaign->fresh()
+                ->load('brand')
+                ->loadCount(['postAssets as posts_count']);
+            $responseCampaign = $this->transformCampaignSummary($freshCampaign);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Campaign updated successfully',
-                'data' => $campaign->fresh()->load('brand')
+                'data' => $responseCampaign
             ]);
         } catch (Exception $e) {
             return response()->json([
@@ -988,6 +1061,7 @@ class CampaignController extends Controller
 
     protected function transformCampaignWithCreativeAssets(Campaign $campaign): Campaign
     {
+        $campaign = $this->normalizeCampaignState($campaign);
         $creativeAssetService = app(CreativeAssetService::class);
 
         $postAssets = $campaign->relationLoaded('postAssets')
@@ -1051,8 +1125,71 @@ class CampaignController extends Controller
         })->sortBy('order_number')->values();
 
         $campaign->setRelation('posts', $transformedPosts);
+        $campaign->setAttribute('posts_count', $transformedPosts->count());
+        $campaign->setAttribute('has_generated_content', $transformedPosts->count() > 0);
 
         return $campaign;
+    }
+
+    protected function normalizeCampaignState(Campaign $campaign): Campaign
+    {
+        $status = $campaign->status;
+
+        if ($status === 'building') {
+            $campaign->status = 'generating';
+        }
+
+        if (empty($campaign->status)) {
+            $campaign->status = 'draft';
+        }
+
+        return $campaign;
+    }
+
+    protected function transformCampaignSummary(Campaign $campaign): array
+    {
+        $campaign = $this->normalizeCampaignState($campaign);
+        $postsCount = (int) ($campaign->posts_count ?? $campaign->postAssets()->count());
+
+        $data = $campaign->only([
+            'id',
+            'uuid',
+            'name',
+            'status',
+            'generation_status',
+            'generation_progress',
+            'is_complete',
+            'wizard_step',
+            'business_type',
+            'goal',
+            'platforms',
+            'start_date',
+            'end_date',
+            'created_at',
+            'updated_at',
+        ]);
+
+        $platforms = $campaign->platforms;
+        if (is_string($platforms)) {
+            $decodedPlatforms = json_decode($platforms, true);
+            if (is_array($decodedPlatforms)) {
+                $platforms = $decodedPlatforms;
+            } else {
+                $platforms = array_filter(array_map('trim', explode(',', $platforms)));
+            }
+        } elseif (!is_array($platforms)) {
+            $platforms = [];
+        }
+
+        $data['platforms'] = array_values($platforms);
+        $data['posts_count'] = $postsCount;
+        $data['has_generated_content'] = $postsCount > 0;
+
+        if ($campaign->relationLoaded('brand') && $campaign->brand) {
+            $data['brand'] = $campaign->brand;
+        }
+
+        return $data;
     }
 
     public function suggestColors(Request $request): JsonResponse
@@ -1187,5 +1324,30 @@ class CampaignController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    protected function resolveBrandId(?int $organizationId, ?int $brandId, bool $fallbackToDefault = true): ?int
+    {
+        if (!$organizationId) {
+            return $brandId;
+        }
+
+        if ($brandId) {
+            return Brand::query()
+                ->where('organization_id', $organizationId)
+                ->where('id', $brandId)
+                ->whereNull('deleted_at')
+                ->value('id');
+        }
+
+        if (!$fallbackToDefault) {
+            return null;
+        }
+
+        return Brand::query()
+            ->where('organization_id', $organizationId)
+            ->where('is_default', true)
+            ->whereNull('deleted_at')
+            ->value('id');
     }
 }

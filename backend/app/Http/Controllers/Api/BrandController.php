@@ -3,23 +3,29 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Brand\StoreBrandRequest;
+use App\Http\Requests\Brand\UpdateBrandRequest;
+use App\Models\Brand;
+use App\Services\BrandAssetService;
 use App\Services\BrandService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class BrandController extends Controller
 {
     protected BrandService $brandService;
+    protected BrandAssetService $brandAssetService;
 
-    public function __construct(BrandService $brandService)
+    public function __construct(BrandService $brandService, BrandAssetService $brandAssetService)
     {
         $this->brandService = $brandService;
+        $this->brandAssetService = $brandAssetService;
     }
 
-    /**
-     * Display a listing of brands for the authenticated user's organization.
-     */
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
+        $this->authorize('viewAny', Brand::class);
+
         $organizationId = $request->user()->organization_id;
         $brands = $this->brandService->getBrandsForOrganization($organizationId);
 
@@ -29,26 +35,14 @@ class BrandController extends Controller
         ]);
     }
 
-    /**
-     * Store a newly created brand.
-     */
-    public function store(Request $request)
+    public function store(StoreBrandRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'logo_url' => 'nullable|string',
-            'primary_color' => 'nullable|string|max:7',
-            'secondary_color' => 'nullable|string|max:7',
-            'accent_color' => 'nullable|string|max:7',
-            'font_arabic' => 'nullable|string|max:100',
-            'font_english' => 'nullable|string|max:100',
-            'design_style' => 'nullable|string|max:50',
-            'reference_images' => 'nullable|array',
-            'brand_voice' => 'nullable|string',
-        ]);
+        $this->authorize('create', Brand::class);
 
         $organizationId = $request->user()->organization_id;
-        $brand = $this->brandService->createBrand($validated, $organizationId);
+        abort_if(is_null($organizationId), 403, 'Organization context is required.');
+
+        $brand = $this->brandService->createBrand($request->validated(), $organizationId);
 
         return response()->json([
             'success' => true,
@@ -57,55 +51,45 @@ class BrandController extends Controller
         ], 201);
     }
 
-    /**
-     * Display the specified brand.
-     */
-    public function show(Request $request, $id)
+    public function show(Request $request, Brand $brand): JsonResponse
     {
+        $this->authorize('view', $brand);
+
         $organizationId = $request->user()->organization_id;
-        $brand = $this->brandService->getBrand($id, $organizationId);
+        abort_if($brand->organization_id !== $organizationId, 404);
+
+        $payload = $this->brandService->getBrand($brand->id, $organizationId);
 
         return response()->json([
             'success' => true,
-            'data' => $brand,
+            'data' => $payload,
         ]);
     }
 
-    /**
-     * Update the specified brand.
-     */
-    public function update(Request $request, $id)
+    public function update(UpdateBrandRequest $request, Brand $brand): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'logo_url' => 'nullable|string',
-            'primary_color' => 'nullable|string|max:7',
-            'secondary_color' => 'nullable|string|max:7',
-            'accent_color' => 'nullable|string|max:7',
-            'font_arabic' => 'nullable|string|max:100',
-            'font_english' => 'nullable|string|max:100',
-            'design_style' => 'nullable|string|max:50',
-            'reference_images' => 'nullable|array',
-            'brand_voice' => 'nullable|string',
-        ]);
+        $this->authorize('update', $brand);
 
         $organizationId = $request->user()->organization_id;
-        $brand = $this->brandService->updateBrand($id, $validated, $organizationId);
+        abort_if($brand->organization_id !== $organizationId, 404);
+
+        $payload = $this->brandService->updateBrand($brand->id, $request->validated(), $organizationId);
 
         return response()->json([
             'success' => true,
             'message' => 'Brand updated successfully',
-            'data' => $brand,
+            'data' => $payload,
         ]);
     }
 
-    /**
-     * Remove the specified brand.
-     */
-    public function destroy(Request $request, $id)
+    public function destroy(Request $request, Brand $brand): JsonResponse
     {
+        $this->authorize('delete', $brand);
+
         $organizationId = $request->user()->organization_id;
-        $this->brandService->deleteBrand($id, $organizationId);
+        abort_if($brand->organization_id !== $organizationId, 404);
+
+        $this->brandService->deleteBrand($brand->id, $organizationId);
 
         return response()->json([
             'success' => true,
@@ -113,31 +97,40 @@ class BrandController extends Controller
         ]);
     }
 
-    /**
-     * Upload brand logo.
-     */
-    public function uploadLogo(Request $request, $id)
+    public function uploadLogo(Request $request, Brand $brand): JsonResponse
     {
-        $request->validate([
-            'logo' => 'required|image|mimes:jpeg,png,jpg,svg|max:2048',
+        $this->authorize('update', $brand);
+
+        $validated = $request->validate([
+            'logo' => ['required', 'image', 'mimes:jpeg,png,jpg,svg', 'max:4096'],
+            'label' => ['nullable', 'string', 'max:255'],
         ]);
 
         $organizationId = $request->user()->organization_id;
-        $logoPath = $this->brandService->uploadLogo($request->file('logo'), $organizationId);
+        abort_if($brand->organization_id !== $organizationId, 404);
 
-        // Update brand with new logo
-        $brand = $this->brandService->updateBrand($id, ['logo_url' => $logoPath], $organizationId);
+        $asset = $this->brandAssetService->store(
+            $brand,
+            [
+                'asset_type' => 'logo',
+                'label' => $validated['label'] ?? 'Primary Logo',
+                'is_primary' => true,
+            ],
+            $request->file('logo')
+        );
 
-        // Extract colors from logo
-        $colors = $this->brandService->extractColorsFromLogo($logoPath);
+        $this->brandService->applyLogoAsset($brand, $asset);
+
+        $colors = $this->brandService->extractColorsFromLogo($asset->storage_path ?? '');
+        $brandPayload = $this->brandService->getBrand($brand->id, $organizationId);
 
         return response()->json([
             'success' => true,
             'message' => 'Logo uploaded successfully',
             'data' => [
-                'logo_url' => $logoPath,
+                'brand' => $brandPayload,
+                'asset' => $this->brandAssetService->formatAsset($asset),
                 'suggested_colors' => $colors,
-                'brand' => $brand,
             ],
         ]);
     }
